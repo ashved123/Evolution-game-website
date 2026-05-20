@@ -1,0 +1,131 @@
+/* ===== PIXEL ART GLOBAL STYLES ===== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Warm pastel island palette */
+  --color-bg:          #f4efe5;
+  --color-panel-bg:    #ece5d8;
+  --color-panel-dark:  #e2d8c8;
+  --color-border:      #b89470;
+  --color-accent:      #b87040;
+  --color-accent2:     #5a9068;
+  --color-text:        #3c3028;
+  --color-text-dim:    #7a6858;
+  --color-green:       #5a9060;
+  --color-blue:        #5070a0;
+  --color-amber:       #c08840;
+  --color-red:         #b85858;
+
+  --border-px:         2px;
+  --shadow:            2px 2px 0 rgba(80, 50, 20, 0.18);
+  --gap:               12px;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  line-height: 1.6;
+  image-rendering: pixelated;
+}
+
+.pixel-box {
+  background: var(--color-panel-bg);
+  border: var(--border-px) solid var(--color-border);
+  box-shadow: var(--shadow);
+  padding: var(--gap);
+}
+
+.pixel-box--dark {
+  background: var(--color-panel-dark);
+}
+
+.section-label {
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--color-accent);
+  padding-bottom: 4px;
+}
+
+.concept-badge {
+  display: inline-block;
+  font-size: 7px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-accent2);
+  color: var(--color-accent2);
+  padding: 2px 6px;
+  margin: 2px;
+  cursor: default;
+}
+
+.placeholder {
+  background: repeating-linear-gradient(
+    45deg,
+    #d8d2c4,
+    #d8d2c4 8px,
+    #ccc6b8 8px,
+    #ccc6b8 16px
+  );
+  border: 2px dashed #a89878;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8a7868;
+  font-size: 8px;
+  text-align: center;
+  gap: 8px;
+}
+
+.placeholder__icon {
+  font-size: 28px;
+  filter: grayscale(0.4) opacity(0.6);
+}
+
+.pixel-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  background: var(--color-accent);
+  color: #f4efe5;
+  border: none;
+  padding: 8px 14px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  image-rendering: pixelated;
+  transition: transform 0.05s, box-shadow 0.05s;
+}
+
+.pixel-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 rgba(80, 50, 20, 0.2);
+}
+
+.pixel-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 rgba(80, 50, 20, 0.2);
+}
+
+.pixel-btn--outline {
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-border); }

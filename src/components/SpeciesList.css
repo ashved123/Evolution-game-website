@@ -1,0 +1,161 @@
+.species-list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  border-top: 2px solid var(--color-border);
+  background: var(--color-panel-bg);
+}
+
+.species-list__header {
+  padding: 8px 12px 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.species-list__header .section-label {
+  border: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+
+.species-list__rows {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.species-item {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.species-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.species-row:hover {
+  background: rgba(184, 148, 112, 0.1);
+}
+
+.species-row--selected {
+  background: rgba(184, 148, 112, 0.15);
+  border-left: 2px solid var(--color-border);
+}
+
+.species-row__emoji   { font-size: 20px; flex-shrink: 0; }
+
+.species-row__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.species-row__name {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.species-row__trophic {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-text-dim);
+}
+
+.fitness-bar { height: 4px; background: var(--color-panel-dark); width: 100%; }
+.fitness-bar__fill { height: 100%; transition: width 0.4s; }
+
+.species-row__stats {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  gap: 1px 4px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.species-row__pop      { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--color-accent2); }
+.species-row__fit      { font-family: 'Press Start 2P', monospace; font-size: 9px; }
+.species-row__pop-label,
+.species-row__fit-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-text-dim);
+  align-self: end;
+}
+
+.species-row__chevron {
+  font-size: 7px;
+  color: var(--color-text-dim);
+  flex-shrink: 0;
+  width: 10px;
+  text-align: center;
+}
+
+.species-stats-panel {
+  padding: 8px 12px 10px 12px;
+  background: var(--color-panel-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-top: 1px solid var(--color-border);
+}
+
+.ssp-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 24px;
+  align-items: center;
+  gap: 6px;
+}
+
+.ssp-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-text-dim);
+  text-align: right;
+}
+
+.ssp-bar {
+  height: 6px;
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-border);
+}
+
+.ssp-bar__fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.ssp-val {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-text);
+  text-align: right;
+}
+
+.ssp-dna-btn {
+  margin-top: 4px;
+  font-size: 7px;
+  padding: 5px 10px;
+  align-self: flex-end;
+}
