@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { SPECIES, overallFitness } from '../data/species.js'
 import { STAT_META, applyDNA } from '../data/codons.js'
+import { averageStats } from '../simulation/individuals.js'
 import './SpeciesList.css'
 
 function fitColor(f) {
@@ -9,7 +10,7 @@ function fitColor(f) {
   return '#ef5350'
 }
 
-export default function SpeciesList({ onSelectSpecies, selectedSpecies }) {
+export default function SpeciesList({ pops, dnaOverrides, onSelectSpecies, selectedSpecies, individuals = {} }) {
   const [expandedId, setExpandedId] = useState(null)
 
   function toggle(sp) {
@@ -25,26 +26,32 @@ export default function SpeciesList({ onSelectSpecies, selectedSpecies }) {
       </div>
       <div className="species-list__rows">
         {SPECIES.map(sp => {
-          const fit = overallFitness(sp.stats)
-          const isOpen = expandedId === sp.id
-          const computedStats = applyDNA(sp.stats, sp.dna)
+          const currentDna  = dnaOverrides?.[sp.id] ?? sp.dna
+          const resolvedBase = applyDNA(sp.stats, currentDna)
+          const pool         = individuals[sp.id] ?? []
+          // Show average stats across living individuals; falls back to DNA-resolved if no pool
+          const displayStats = averageStats(pool, resolvedBase)
+          const fit          = overallFitness(displayStats)
+          const livePop      = pops?.[sp.id] ?? sp.pop
+          const isOpen       = expandedId === sp.id
+          const extinct      = livePop < 1
 
           return (
-            <div key={sp.id} className="species-item">
+            <div key={sp.id} className={`species-item ${extinct ? 'species-item--extinct' : ''}`}>
               <button
                 className={`species-row ${selectedSpecies?.id === sp.id ? 'species-row--selected' : ''}`}
                 onClick={() => toggle(sp)}
               >
-                <span className="species-row__emoji">{sp.emoji}</span>
+                <span className="species-row__emoji" style={{ opacity: extinct ? 0.35 : 1 }}>{sp.emoji}</span>
                 <div className="species-row__info">
-                  <span className="species-row__name">{sp.name}</span>
+                  <span className="species-row__name">{sp.name}{extinct ? ' — EXTINCT' : ''}</span>
                   <span className="species-row__trophic">{sp.trophic}</span>
                   <div className="fitness-bar">
                     <div className="fitness-bar__fill" style={{ width: `${fit}%`, background: fitColor(fit) }} />
                   </div>
                 </div>
                 <div className="species-row__stats">
-                  <span className="species-row__pop">{sp.pop}</span>
+                  <span className="species-row__pop">{Math.round(livePop)}</span>
                   <span className="species-row__pop-label">pop</span>
                   <span className="species-row__fit" style={{ color: fitColor(fit) }}>{fit}</span>
                   <span className="species-row__fit-label">fit</span>
@@ -54,15 +61,24 @@ export default function SpeciesList({ onSelectSpecies, selectedSpecies }) {
 
               {isOpen && (
                 <div className="species-stats-panel">
-                  {STAT_META.map(({ key, label, color }) => (
-                    <div key={key} className="ssp-row">
-                      <span className="ssp-label">{label}</span>
-                      <div className="ssp-bar">
-                        <div className="ssp-bar__fill" style={{ width: `${computedStats[key]}%`, background: color }} />
+                  <div className="ssp-avg-label">Population average ({pool.length} individuals)</div>
+                  {STAT_META.map(({ key, label, color }) => {
+                    const avg  = displayStats[key] ?? 0
+                    const base = resolvedBase[key] ?? 0
+                    const diff = avg - base
+                    return (
+                      <div key={key} className="ssp-row">
+                        <span className="ssp-label">{label}</span>
+                        <div className="ssp-bar">
+                          <div className="ssp-bar__fill" style={{ width: `${avg}%`, background: color }} />
+                        </div>
+                        <span className="ssp-val">{avg}</span>
+                        <span className={`ssp-diff ${diff > 0 ? 'ssp-diff--pos' : diff < 0 ? 'ssp-diff--neg' : ''}`}>
+                          {diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : ''}
+                        </span>
                       </div>
-                      <span className="ssp-val">{computedStats[key]}</span>
-                    </div>
-                  ))}
+                    )
+                  })}
                   <button
                     className="pixel-btn ssp-dna-btn"
                     onClick={() => onSelectSpecies(sp)}

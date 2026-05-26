@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Island Exports</title>
+<style>
+  body { background: #111; display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; font-family: monospace; }
+  .island-wrap { text-align: center; }
+  .island-wrap h2 { color: #fff; margin: 8px 0 4px; font-size: 14px; }
+  .island-wrap p  { color: #888; margin: 0 0 8px; font-size: 11px; }
+  canvas { display: block; image-rendering: pixelated; }
+  button { margin-top: 8px; padding: 6px 14px; font-family: monospace; cursor: pointer; }
+  #status { color: #4caf50; font-size: 13px; padding: 0 24px 16px; font-family: monospace; }
+</style>
+</head>
+<body>
+<div id="status">Rendering islands…</div>
+
+<script>
+// ── Biome colours ───────────────────────────────────────────────────────────
+const BIOMES = {
+  DEEP_OCEAN:    { color: '#7ab4cc' },
+  SHALLOW_WATER: { color: '#a8d8ea' },
+  BEACH:         { color: '#f5e6c8' },
+  GRASSLAND:     { color: '#7ec850' },
+  WETLAND:       { color: '#4caf70' },
+  FOREST:        { color: '#2d8a4e' },
+  HIGHLAND:      { color: '#8b7355' },
+  ROCKY_PEAK:    { color: '#6b6b6b' },
+}
+
+// ── Island presets ──────────────────────────────────────────────────────────
+const ISLAND_PRESETS = {
+  standard: { label: 'Standard',  desc: 'Balanced mix of all biomes',       shallow:1.55, beach:1.18, grassland:1.00, wetlandArc:[90,170],  forest:0.72, highland:0.42, rocky:0.22 },
+  volcanic: { label: 'Volcanic',  desc: 'Dominant rocky peak, sparse green', shallow:1.45, beach:1.12, grassland:1.00, wetlandArc:null,      forest:0.60, highland:0.52, rocky:0.38 },
+  tropical: { label: 'Tropical',  desc: 'Dense forest, wide coastal wetlands',shallow:1.58, beach:1.18, grassland:1.00, wetlandArc:[60,200], forest:0.78, highland:0.30, rocky:0.14 },
+  highland: { label: 'Highland',  desc: 'Rugged hills and rocky outcrops',   shallow:1.42, beach:1.10, grassland:1.00, wetlandArc:null,      forest:0.56, highland:0.55, rocky:0.30 },
+}
+
+// ── Drawing helpers ─────────────────────────────────────────────────────────
+const WORLD_W = 4000, WORLD_H = 4000
+const ART_W   = 800,  ART_H   = 800   // higher res for the export
+
+const PALETTE   = Object.values(BIOMES).map(b => { const h=b.color.replace('#',''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)] })
+const BIOME_IDS = Object.keys(BIOMES)
+
+function snapToPalette(ctx, w, h) {
+  const img = ctx.getImageData(0, 0, w, h)
+  const d = img.data
+  for (let i = 0; i < d.length; i += 4) {
+    const r=d[i], g=d[i+1], b=d[i+2]
+    let minDist=Infinity, best=PALETTE[0]
+    for (const c of PALETTE) {
+      const dist=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2
+      if (dist<minDist){minDist=dist;best=c}
+    }
+    d[i]=best[0]; d[i+1]=best[1]; d[i+2]=best[2]
+  }
+  ctx.putImageData(img, 0, 0)
+}
+
+const VARS = {
+  grass:   [1.00,0.92,1.08,0.88,0.96,1.10,0.84,1.02,1.00,0.90,1.06,0.86,0.98,1.12,0.88,0.96],
+  forest:  [0.92,1.10,0.84,1.02,1.12,0.86,0.98,1.06,0.90,1.00,0.82,1.08,0.94,0.88,1.10,0.96],
+  wetland: [1.08,0.88,1.00,0.84,1.10,0.96,0.86,1.04,1.00,0.90,1.08,0.82,1.00,0.92,0.86,1.06],
+  high:    [0.94,1.06,0.86,1.00,0.90,1.10,0.82,0.98,1.08,0.88,1.02,0.84,0.96,1.06,0.88,1.00],
+  peak:    [1.00,0.88,1.10,0.82,1.00,0.90,1.08,0.84,1.00,0.92,0.86,1.06,0.94,0.88,1.10,0.96],
+}
+
+const GC = { cx:200, cy:195, rx:68, ry:60 }
+const FC = { cx:90,  cy:85  }
+const WC = { cx:318, cy:88  }
+const HC = { cx:200, cy:318 }
+
+function ellipseEdge(cx,cy,rx,ry,tx,ty){
+  const dx=tx-cx, dy=ty-cy, len=Math.sqrt(dx*dx+dy*dy)
+  const ux=dx/len, uy=dy/len
+  const t=1/Math.sqrt((ux/rx)**2+(uy/ry)**2)
+  return [Math.round(cx+ux*t), Math.round(cy+uy*t)]
+}
+
+function getIslandConfig(presetId) {
+  const p = ISLAND_PRESETS[presetId] ?? ISLAND_PRESETS.standard
+  const forestRx = Math.round(55*p.forest/0.72)
+  const forestRy = Math.round(48*p.forest/0.72)
+  const highRx   = Math.round(52*p.highland/0.42)
+  const highRy   = Math.min(HC.cy-GC.cy-GC.ry-4, Math.round(47*p.highland/0.42))
+  const peakRx   = Math.round(20*p.rocky/0.22)
+  const peakRy   = Math.round(18*p.rocky/0.22)
+  const hasWetland = !!p.wetlandArc
+  const arcWidth   = hasWetland ? (p.wetlandArc[1]-p.wetlandArc[0]) : 80
+  const wetlandRx  = Math.round(47*Math.sqrt(arcWidth/80))
+  const wetlandRy  = Math.round(42*Math.sqrt(arcWidth/80))
+  const [gfx1,gfy1] = ellipseEdge(GC.cx,GC.cy,GC.rx,GC.ry,FC.cx,FC.cy)
+  const [gfx2,gfy2] = ellipseEdge(FC.cx,FC.cy,forestRx,forestRy,GC.cx,GC.cy)
+  const [gwx1,gwy1] = ellipseEdge(GC.cx,GC.cy,GC.rx,GC.ry,WC.cx,WC.cy)
+  const [gwx2,gwy2] = ellipseEdge(WC.cx,WC.cy,wetlandRx,wetlandRy,GC.cx,GC.cy)
+  const islands = [
+    { key:'grass',   cx:GC.cx, cy:GC.cy, rx:GC.rx,    ry:GC.ry,    vars:'grass',   biome:'GRASSLAND' },
+    { key:'forest',  cx:FC.cx, cy:FC.cy, rx:forestRx,  ry:forestRy, vars:'forest',  biome:'FOREST'    },
+    ...(hasWetland ? [{ key:'wetland', cx:WC.cx, cy:WC.cy, rx:wetlandRx, ry:wetlandRy, vars:'wetland', biome:'WETLAND' }] : []),
+    { key:'high',    cx:HC.cx, cy:HC.cy, rx:highRx,    ry:highRy,   vars:'high',    biome:'HIGHLAND'  },
+  ]
+  const peak    = { cx:200, cy:316, rx:peakRx, ry:peakRy, vars:'peak', biome:'ROCKY_PEAK' }
+  const bridges = [
+    { x1:gfx1, y1:gfy1, x2:gfx2, y2:gfy2, bw:12, sw:20 },
+    ...(hasWetland ? [{ x1:gwx1, y1:gwy1, x2:gwx2, y2:gwy2, bw:11, sw:19 }] : []),
+    { x1:200, y1:GC.cy+GC.ry, x2:200, y2:HC.cy-highRy, bw:14, sw:23 },
+  ]
+  return { islands, peak, bridges }
+}
+
+function drawIsland(ctx, presetId) {
+  const { islands, peak, bridges } = getIslandConfig(presetId)
+  const sx = WORLD_W/ART_W, sy = WORLD_H/ART_H
+
+  function blobPts(isl, s=1) {
+    const vars=VARS[isl.vars], n=vars.length
+    return vars.map((v,i)=>({
+      x:(isl.cx+Math.cos(i/n*Math.PI*2)*isl.rx*s*v)*sx,
+      y:(isl.cy+Math.sin(i/n*Math.PI*2)*isl.ry*s*v)*sy,
+    }))
+  }
+  function smoothFill(pts, color) {
+    const n=pts.length
+    ctx.beginPath()
+    ctx.moveTo((pts[n-1].x+pts[0].x)/2,(pts[n-1].y+pts[0].y)/2)
+    for(let i=0;i<n;i++){const a=pts[i],b=pts[(i+1)%n];ctx.quadraticCurveTo(a.x,a.y,(a.x+b.x)/2,(a.y+b.y)/2)}
+    ctx.closePath(); ctx.fillStyle=color; ctx.fill()
+  }
+  function bridgeStroke(b, halfW, color) {
+    ctx.strokeStyle=color; ctx.lineWidth=halfW*2*sx; ctx.lineCap='round'
+    ctx.beginPath(); ctx.moveTo(b.x1*sx,b.y1*sy); ctx.lineTo(b.x2*sx,b.y2*sy); ctx.stroke()
+  }
+
+  ctx.fillStyle=BIOMES.DEEP_OCEAN.color
+  ctx.fillRect(0,0,WORLD_W,WORLD_H)
+  for(const isl of islands) smoothFill(blobPts(isl,1.48),BIOMES.SHALLOW_WATER.color)
+  for(const b of bridges)   bridgeStroke(b,b.sw,BIOMES.SHALLOW_WATER.color)
+  for(const isl of islands) smoothFill(blobPts(isl,1.18),BIOMES.BEACH.color)
+  for(const b of bridges)   bridgeStroke(b,b.bw,BIOMES.BEACH.color)
+  for(const isl of islands) smoothFill(blobPts(isl,1.0),BIOMES[isl.biome].color)
+  smoothFill(blobPts(peak,1.0),BIOMES.ROCKY_PEAK.color)
+}
+
+// ── Render all 4 islands ────────────────────────────────────────────────────
+const presets = Object.keys(ISLAND_PRESETS)
+const container = document.body
+
+presets.forEach(presetId => {
+  const preset = ISLAND_PRESETS[presetId]
+
+  const wrap = document.createElement('div')
+  wrap.className = 'island-wrap'
+
+  const h2 = document.createElement('h2')
+  h2.textContent = preset.label
+  const p = document.createElement('p')
+  p.textContent = preset.desc
+
+  const canvas = document.createElement('canvas')
+  canvas.width  = ART_W
+  canvas.height = ART_H
+  canvas.style.width  = ART_W + 'px'
+  canvas.style.height = ART_H + 'px'
+
+  const ctx = canvas.getContext('2d')
+  ctx.setTransform(ART_W/WORLD_W, 0, 0, ART_H/WORLD_H, 0, 0)
+  drawIsland(ctx, presetId)
+  ctx.setTransform(1,0,0,1,0,0)
+  snapToPalette(ctx, ART_W, ART_H)
+
+  // Legend overlay
+  ctx.setTransform(1,0,0,1,0,0)
+  ctx.fillStyle='rgba(0,0,0,0.55)'
+  ctx.fillRect(8,8,140,Object.keys(BIOMES).length*14+10)
+  ctx.font='bold 10px monospace'
+  Object.entries(BIOMES).forEach(([id,b],i)=>{
+    ctx.fillStyle=b.color
+    ctx.fillRect(12,16+i*14,10,10)
+    ctx.fillStyle='#fff'
+    ctx.fillText(id.replace('_',' '),26,25+i*14)
+  })
+
+  const btn = document.createElement('button')
+  btn.textContent = `⬇ Download ${preset.label}.png`
+  btn.onclick = () => {
+    canvas.toBlob(blob => {
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `island-${presetId}.png`
+      a.click()
+    })
+  }
+
+  wrap.appendChild(h2)
+  wrap.appendChild(p)
+  wrap.appendChild(canvas)
+  wrap.appendChild(btn)
+  container.appendChild(wrap)
+})
+
+document.getElementById('status').textContent = '✓ All 4 islands rendered — click a button to download each PNG.'
+</script>
+</body>
+</html>

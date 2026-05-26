@@ -1,0 +1,111 @@
+.ind-card {
+  position: absolute;
+  z-index: 20;
+  background: var(--color-panel-bg);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow);
+  width: 220px;
+  pointer-events: all;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.ind-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-panel-dark);
+}
+
+.ind-card__emoji { font-size: 18px; flex-shrink: 0; }
+
+.ind-card__name {
+  font-size: 6px;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.ind-card__sub {
+  font-size: 5px;
+  color: var(--color-text-dim);
+}
+
+.ind-card__gender     { font-size: 7px; }
+.ind-card__gender--m  { color: #64b5f6; }
+.ind-card__gender--f  { color: #f48fb1; }
+
+.ind-card__close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.ind-card__close:hover { color: var(--color-text); }
+
+.ind-card__stats {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ind-card__row {
+  display: grid;
+  grid-template-columns: 52px 1fr 22px 22px;
+  align-items: center;
+  gap: 4px;
+}
+
+.ind-card__label {
+  font-size: 5px;
+  color: var(--color-text-dim);
+  text-align: right;
+}
+
+.ind-card__bar {
+  height: 5px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-border);
+}
+
+.ind-card__bar-fill {
+  height: 100%;
+}
+
+.ind-card__val {
+  font-size: 6px;
+  color: var(--color-text);
+  text-align: right;
+}
+
+.ind-card__delta {
+  font-size: 5px;
+  text-align: right;
+}
+.ind-card__delta.pos  { color: #66bb6a; }
+.ind-card__delta.neg  { color: #ef5350; }
+.ind-card__delta.zero { color: var(--color-text-dim); }
+
+.ind-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.ind-card__fit-label {
+  font-size: 5px;
+  color: var(--color-text-dim);
+}
+
+.ind-card__fit-val {
+  font-size: 9px;
+  color: var(--color-accent2);
+}

@@ -13,7 +13,7 @@
   border-left: none;
   border-right: none;
   border-top: none;
-  padding: 10px 12px;
+  padding: 12px 16px;
 }
 
 .event-banner__content {
@@ -44,7 +44,7 @@
   border: none;
   border-top: 2px solid var(--color-border);
   border-radius: 0;
-  padding: 10px 12px;
+  padding: 12px 16px 16px;
 }
 
 .food-web__grid {
@@ -81,9 +81,123 @@
   text-align: center;
 }
 
-/* Population graph placeholder */
-.pop-graph-placeholder {
-  height: 100px;
-  margin-top: 8px;
-  font-size: 8px;
+.food-web__node--renewable {
+  border-color: var(--color-accent2);
+  background: rgba(90, 144, 104, 0.12);
 }
+
+.food-web__renew {
+  font-size: 5px;
+  color: var(--color-accent2);
+  text-align: center;
+}
+
+.food-web__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* Active event highlight */
+.event-banner--active {
+  background: rgba(184, 112, 64, 0.10);
+  border-bottom: 2px solid var(--color-accent);
+}
+
+.event-banner__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.event-banner__ticks {
+  font-size: 6px;
+  color: var(--color-text-dim);
+}
+
+/* Dead matter */
+.dead-matter {
+  border: none;
+  border-top: 2px solid var(--color-border);
+  border-radius: 0;
+  padding: 10px 16px;
+}
+
+.dead-matter__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.dead-matter__icon { font-size: 14px; }
+
+.dead-matter__bar {
+  flex: 1;
+  height: 8px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-border);
+}
+
+.dead-matter__fill {
+  height: 100%;
+  background: #7a6050;
+  transition: width 0.4s;
+}
+
+.dead-matter__val {
+  font-size: 7px;
+  color: var(--color-text);
+  min-width: 24px;
+  text-align: right;
+}
+
+.dead-matter__hint {
+  font-size: 6px;
+  color: var(--color-text-dim);
+  margin-top: 4px;
+  line-height: 1.7;
+}
+
+/* Event log */
+.event-log {
+  border: none;
+  border-top: 2px solid var(--color-border);
+  border-radius: 0;
+  padding: 10px 16px;
+}
+
+.event-log__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.event-log__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 6px;
+}
+
+.event-log__emoji { font-size: 12px; }
+
+.event-log__title {
+  flex: 1;
+  color: var(--color-text);
+}
+
+.event-log__year {
+  color: var(--color-text-dim);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* Extinct species */
+.species-item--extinct .species-row__name {
+  color: #a07868;
+}
+

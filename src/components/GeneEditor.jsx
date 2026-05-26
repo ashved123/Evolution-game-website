@@ -4,15 +4,12 @@ import './GeneEditor.css'
 
 const BASES = ['A', 'T', 'G', 'C']
 
-export default function GeneEditor({ species, onClose }) {
-  const [dna, setDna] = useState(species?.dna ?? ['ATG', 'GCC', 'TAA'])
+// dna and onDnaChange are now controlled from App — gene edits affect the live simulation
+export default function GeneEditor({ species, dna: dnaProp, onDnaChange, onClose }) {
+  const dna = dnaProp ?? species?.dna ?? ['ATG', 'GCC', 'TAA']
   const [editing, setEditing] = useState(null) // { codonIdx, baseIdx }
 
-  // Reset local DNA when species changes
-  React.useEffect(() => {
-    setDna(species?.dna ?? ['ATG', 'GCC', 'TAA'])
-    setEditing(null)
-  }, [species?.id])
+  React.useEffect(() => { setEditing(null) }, [species?.id])
 
   if (!species) return null
 
@@ -26,7 +23,7 @@ export default function GeneEditor({ species, onClose }) {
       arr[baseIdx] = newBase
       return arr.join('')
     })
-    setDna(newDna)
+    onDnaChange?.(newDna)
     setEditing(null)
   }
 

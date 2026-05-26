@@ -1,21 +1,16 @@
 .species-list {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  flex: 1;
-  min-height: 0;
-  border-top: 2px solid var(--color-border);
   background: var(--color-panel-bg);
 }
 
 .species-list__header {
-  padding: 8px 12px 4px;
+  padding: 10px 14px 6px;
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
 }
 
 .species-list__header .section-label {
@@ -39,8 +34,8 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px 8px 12px;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -113,7 +108,7 @@
 }
 
 .species-stats-panel {
-  padding: 8px 12px 10px 12px;
+  padding: 12px 16px 14px 16px;
   background: var(--color-panel-dark);
   display: flex;
   flex-direction: column;
@@ -121,12 +116,28 @@
   border-top: 1px solid var(--color-border);
 }
 
+.ssp-avg-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-text-dim);
+  margin-bottom: 4px;
+}
+
 .ssp-row {
   display: grid;
-  grid-template-columns: 60px 1fr 24px;
+  grid-template-columns: 60px 1fr 24px 24px;
   align-items: center;
   gap: 6px;
 }
+
+.ssp-diff {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  text-align: right;
+  color: var(--color-text-dim);
+}
+.ssp-diff--pos { color: #66bb6a; }
+.ssp-diff--neg { color: #ef5350; }
 
 .ssp-label {
   font-family: 'Press Start 2P', monospace;
