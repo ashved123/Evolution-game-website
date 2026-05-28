@@ -10,7 +10,7 @@
 }
 
 .create-card {
-  width: 560px;
+  width: 420px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -51,51 +51,6 @@
 
 .create-name-input {
   width: 100%;
-}
-
-.preset-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.preset-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  background: var(--color-panel-dark);
-  border: 2px solid var(--color-border);
-  cursor: pointer;
-  font-family: 'Press Start 2P', monospace;
-  transition: border-color 0.1s;
-}
-
-.preset-card:hover {
-  border-color: var(--color-text-dim);
-}
-
-.preset-card--selected {
-  border-color: var(--color-accent);
-  background: var(--color-panel-bg);
-}
-
-.preset-canvas {
-  image-rendering: pixelated;
-  display: block;
-}
-
-.preset-label {
-  font-size: 9px;
-  color: var(--color-text);
-}
-
-.preset-desc {
-  font-size: 7px;
-  color: var(--color-text-dim);
-  text-align: center;
-  line-height: 1.8;
 }
 
 .create-submit {

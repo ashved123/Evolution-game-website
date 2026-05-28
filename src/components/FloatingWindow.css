@@ -1,0 +1,144 @@
+.fwin {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-panel-bg);
+  border: 2px solid var(--color-border);
+  box-shadow: 4px 4px 0 rgba(80, 50, 20, 0.28);
+  animation: fwin-in 0.14s ease;
+}
+
+@keyframes fwin-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Title bar — drag handle */
+.fwin__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  height: 26px;
+  background: var(--color-panel-dark);
+  border-bottom: 2px solid var(--color-border);
+  cursor: grab;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.fwin__bar:active { cursor: grabbing; }
+
+.fwin__title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-accent);
+  letter-spacing: 0.5px;
+}
+
+.fwin__close {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.fwin__close:hover { color: var(--color-accent); }
+
+/* Scrollable body */
+.fwin__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Bottom-right resize grip */
+.fwin__resize {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  opacity: 0.55;
+  background:
+    linear-gradient(
+      -45deg,
+      transparent 3px, var(--color-border) 3px, var(--color-border) 4px,
+      transparent 4px, transparent 7px, var(--color-border) 7px, var(--color-border) 8px,
+      transparent 8px, transparent 11px, var(--color-border) 11px, var(--color-border) 12px,
+      transparent 12px
+    );
+}
+
+/* ── Time window ── */
+
+.time-win {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 10px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.time-win__info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.time-win__year {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.time-win__season {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.time-win__mating {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: #f48fb1;
+  animation: pulse-m 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-m {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.time-win__next {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-accent);
+  background: rgba(184, 112, 64, 0.1);
+  border: 1px solid var(--color-accent);
+  padding: 5px 8px;
+  line-height: 1.9;
+}
+
+.time-win__divider {
+  height: 1px;
+  background: var(--color-border);
+  flex-shrink: 0;
+  margin: 0 -14px;
+}
+
+.time-win__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

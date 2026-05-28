@@ -1,0 +1,199 @@
+.events-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* ── Shared section shell ── */
+
+.ep-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.ep-section--event {
+  border-color: var(--color-accent);
+  background: rgba(184, 112, 64, 0.06);
+}
+
+.ep-section__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Next arrival ── */
+
+.ep-arrival {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ep-arrival--done {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.6;
+}
+
+.ep-arrival__preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ep-arrival__emoji {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ep-arrival__info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ep-arrival__name {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--color-text);
+}
+
+.ep-arrival__msg {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-text-dim);
+  line-height: 1.9;
+}
+
+.ep-arrival__condition {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-border);
+}
+
+.ep-arrival__cond-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.ep-arrival__trigger {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-text);
+  line-height: 1.7;
+}
+
+.ep-arrival__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ep-arrival__prog-bar {
+  height: 8px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.ep-arrival__prog-fill {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  transition: width 0.4s ease;
+}
+
+.ep-arrival__prog-nums {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-text-dim);
+}
+
+/* ── Environment ── */
+
+.ep-env {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ep-env__emoji {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ep-env__text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ep-env__title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--color-text);
+}
+
+.ep-env__desc {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-text-dim);
+  line-height: 1.9;
+}
+
+.ep-env__ticks {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-accent);
+}
+
+/* ── Event log ── */
+
+.ep-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ep-log__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.ep-log__row:last-child { border-bottom: none; }
+
+.ep-log__emoji { font-size: 14px; flex-shrink: 0; }
+
+.ep-log__title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-text);
+  flex: 1;
+}
+
+.ep-log__year {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-text-dim);
+}

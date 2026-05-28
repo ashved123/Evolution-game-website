@@ -32,13 +32,10 @@
   align-items: center;
   gap: 8px;
   padding: 0 16px;
-  flex: 1;
   border-right: 1px solid var(--color-border);
 }
 
-.header__icon {
-  font-size: 18px;
-}
+.header__icon { font-size: 18px; }
 
 .header__name {
   font-size: 10px;
@@ -56,28 +53,27 @@
   white-space: nowrap;
 }
 
-.header__year strong {
-  color: var(--color-accent2);
-}
+.header__year strong { color: var(--color-accent2); }
 
-.header__season {
+.header__tut-btn {
   font-family: 'Press Start 2P', monospace;
-  font-size: 6px;
+  font-size: 8px;
+  width: 22px;
+  height: 22px;
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-border);
   color: var(--color-text-dim);
-  white-space: nowrap;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: var(--shadow);
 }
 
-.header__mating {
-  color: #f48fb1;
-  animation: pulse-mating 1.2s ease-in-out infinite;
-}
-
-@keyframes pulse-mating {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+.header__tut-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 /* ── Nav tabs ── */
@@ -85,7 +81,7 @@
 .header__nav {
   display: flex;
   align-items: stretch;
-  border-right: 1px solid var(--color-border);
+  flex: 1;
 }
 
 .nav-tab {
@@ -102,14 +98,11 @@
   gap: 6px;
   transition: background 0.1s, color 0.1s;
   white-space: nowrap;
-  position: relative;
 }
 
-.nav-tab:last-child {
-  border-right: none;
-}
+.nav-tab:last-child { border-right: none; }
 
-.nav-tab:hover:not(.nav-tab--disabled) {
+.nav-tab:hover {
   background: rgba(184, 148, 112, 0.12);
   color: var(--color-text);
 }
@@ -120,44 +113,124 @@
   box-shadow: inset 0 -2px 0 var(--color-accent);
 }
 
-.nav-tab--disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+/* ── Speed controls (rendered inside Time floating window) ── */
+
+.speed-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-accent);
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: right;
 }
 
-.nav-tab__sub {
-  font-size: 14px;
-  line-height: 1;
-}
-
-/* ── Speed controls ── */
-
-.header__speed {
+.speed-slider-wrap {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 12px;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.speed-btn {
+.speed-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 4px;
+  background: var(--color-border);
+  outline: none;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+}
+
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--color-accent);
+  border: 2px solid var(--color-text);
+  cursor: pointer;
+  box-shadow: 1px 1px 0 rgba(80, 50, 20, 0.3);
+}
+
+.speed-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--color-accent);
+  border: 2px solid var(--color-text);
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.speed-ticks {
+  display: flex;
+  justify-content: space-between;
+  width: 110px;
+  padding: 0 5px;
+}
+
+.speed-ticks span {
+  display: block;
+  width: 1px;
+  height: 4px;
+  background: var(--color-border);
+}
+
+.speed-btn--step {
   font-family: 'Press Start 2P', monospace;
   font-size: 7px;
   background: var(--color-panel-bg);
-  color: var(--color-text-dim);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-accent2);
+  color: var(--color-accent2);
   padding: 4px 8px;
   cursor: pointer;
-  box-shadow: var(--shadow);
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  box-shadow: 2px 2px 0 rgba(80, 50, 20, 0.18);
 }
 
-.speed-btn:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.speed-btn--active {
-  background: var(--color-accent);
+.speed-btn--step:hover {
+  background: var(--color-accent2);
   color: var(--color-bg);
-  border-color: var(--color-accent);
+}
+
+/* ── Arrival banner ── */
+
+.arrival-banner {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  background: var(--color-panel-dark);
+  border: 2px solid var(--color-accent);
+  box-shadow: 4px 4px 0 rgba(80, 50, 20, 0.3);
+  padding: 12px 20px;
+  max-width: 480px;
+  width: 90%;
+  animation: banner-in 0.3s ease;
+}
+
+@keyframes banner-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.arrival-banner__concept {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.arrival-banner__title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.arrival-banner__msg {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-text-dim);
+  line-height: 1.8;
 }

@@ -2,14 +2,16 @@
   display: flex;
   flex-direction: column;
   background: var(--color-panel-dark);
-  padding: 14px 18px 18px;
+  padding: 14px 18px 12px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .gene-editor__header {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   flex-shrink: 0;
 }
 
@@ -34,59 +36,152 @@
   flex-shrink: 0;
 }
 
+/* ── Scrollable body ── */
+
 .gene-editor__body {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 4px;
+}
+
+/* ── Trait groups ── */
+
+.ge-trait-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ge-trait-group__label {
+  font-size: 6px;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 3px;
+}
+
+/* ── One row per trait ── */
+
+.ge-trait-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 12px;
   align-items: start;
 }
 
-.ge-dna-col {
+.ge-trait-row__info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
 }
 
-.dna-strip {
+.ge-trait-row__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ge-trait-row__label {
+  font-size: 7px;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.ge-trait-row__val {
+  font-size: 8px;
+  color: var(--color-text);
+}
+
+.ge-trait-row__delta {
+  font-size: 7px;
+  min-width: 28px;
+}
+
+.delta--pos { color: #66bb6a; }
+.delta--neg { color: #ef5350; }
+
+.stat-bar {
+  height: 6px;
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-border);
+}
+
+.stat-bar__fill {
+  height: 100%;
+  transition: width 0.35s ease;
+}
+
+.ge-trait-row__phenotype {
+  font-size: 6px;
+  color: var(--color-text-dim);
+  opacity: 0.7;
+  font-style: italic;
+}
+
+/* ── Codon strip (3 codons per trait) ── */
+
+.ge-trait-codons {
   display: flex;
   align-items: flex-start;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 .codon {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
+  padding: 5px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.codon--active {
+  border-color: var(--color-border);
+  background: var(--color-panel-bg);
 }
 
 .codon__bases {
   display: flex;
-  gap: 3px;
+  gap: 2px;
 }
 
 .codon__label {
-  font-size: 6px;
+  font-size: 5px;
   color: var(--color-text-dim);
   text-align: center;
   max-width: 80px;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
+.codon__mod {
+  font-size: 6px;
+  padding: 1px 3px;
+  white-space: nowrap;
+}
+
+.eff--pos { color: #66bb6a; }
+.eff--neg { color: #ef5350; }
+
 .codon-sep {
-  font-size: 20px;
+  font-size: 16px;
   color: var(--color-text-dim);
-  margin-top: 3px;
-  padding: 0 2px;
+  margin-top: 4px;
+  padding: 0 1px;
   line-height: 1;
 }
 
 /* Base buttons */
 .base-btn {
   font-family: 'Press Start 2P', monospace;
-  font-size: 11px;
-  width: 28px;
-  height: 28px;
+  font-size: 10px;
+  width: 26px;
+  height: 26px;
   border: 1px solid transparent;
   cursor: pointer;
   box-shadow: var(--shadow);
@@ -104,11 +199,17 @@
 .base-btn--G { background: #484878; color: #d8d8ea; border-color: #585898; }
 .base-btn--C { background: #a86030; color: #ead8c8; border-color: #b87040; }
 
-.base-picker {
+/* ── Base picker bar (bottom) ── */
+
+.ge-picker-bar {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+  margin-top: 8px;
 }
 
 .base-picker__label {
@@ -119,50 +220,92 @@
 .ge-hint {
   font-size: 7px;
   color: var(--color-text-dim);
+  margin: 8px 0 0;
+  flex-shrink: 0;
 }
 
-.ge-stats-col {
+/* ── Inject panel ── */
+
+.ge-inject {
+  flex-shrink: 0;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-bg);
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.ge-inject--ready {
+  opacity: 1;
+  border-color: var(--color-accent);
+}
+
+.ge-inject__header {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
-.stat-row {
-  display: grid;
-  grid-template-columns: 68px 1fr 26px auto;
+.ge-inject__title {
+  font-size: 7px;
+  color: var(--color-accent);
+}
+
+.ge-inject__hint {
+  font-size: 6px;
+  color: var(--color-text-dim);
+  line-height: 1.8;
+  margin: 0;
+}
+
+.ge-inject__deltas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.ge-inject__delta-chip {
+  font-size: 6px;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  opacity: 0.85;
+}
+
+.ge-inject__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ge-inject__count-label {
+  font-size: 7px;
+  color: var(--color-text-dim);
+  display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.stat-row__label {
+.ge-inject__slider {
+  width: 80px;
+  accent-color: var(--color-accent);
+}
+
+.ge-inject__count-val {
   font-size: 7px;
-  color: var(--color-text-dim);
-  text-align: right;
-  white-space: nowrap;
-}
-
-.stat-bar {
-  height: 6px;
-  background: var(--color-panel-bg);
-  border: 1px solid var(--color-border);
-}
-
-.stat-bar__fill {
-  height: 100%;
-  transition: width 0.35s ease;
-}
-
-.stat-row__val {
-  font-size: 8px;
   color: var(--color-text);
-  text-align: right;
+  min-width: 40px;
 }
 
-.stat-row__delta {
+.ge-inject__btn {
   font-size: 7px;
-  min-width: 28px;
+  padding: 5px 10px;
 }
 
-.delta--pos { color: var(--color-green); }
-.delta--neg { color: var(--color-red); }
+.ge-inject__btn--done {
+  color: #66bb6a;
+  border-color: #66bb6a;
+}

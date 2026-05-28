@@ -1,0 +1,207 @@
+.tut-win {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  gap: 0;
+}
+
+/* ── Progress bar ── */
+
+.tut-win__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 8px 12px 6px;
+}
+
+.tut-win__counter {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+.tut-win__bar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.tut-win__pip {
+  width: 10px;
+  height: 6px;
+  background: var(--color-border);
+  transition: background 0.2s;
+}
+
+.tut-win__pip--done {
+  background: var(--color-accent);
+}
+
+.tut-win__divider {
+  height: 1px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+/* ── Content row: narrator left, dialogue right ── */
+
+.tut-win__content-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ── Narrator stage (wallpaper box) ── */
+
+.tut-win__stage {
+  flex-shrink: 0;
+  width: 220px;
+  position: relative;
+  overflow: hidden;
+
+  background-color: #e8d8b8;
+  background-image:
+    repeating-linear-gradient(45deg,  rgba(140,90,40,0.12) 0, rgba(140,90,40,0.12) 1px, transparent 0, transparent 50%),
+    repeating-linear-gradient(-45deg, rgba(140,90,40,0.12) 0, rgba(140,90,40,0.12) 1px, transparent 0, transparent 50%);
+  background-size: 10px 10px;
+
+  border-right: 2px solid var(--color-border);
+}
+
+.tut-win__stage--threat {
+  background-color: #1a0606;
+  background-image:
+    repeating-linear-gradient(45deg,  rgba(180,40,40,0.12) 0, rgba(180,40,40,0.12) 1px, transparent 0, transparent 50%),
+    repeating-linear-gradient(-45deg, rgba(180,40,40,0.12) 0, rgba(180,40,40,0.12) 1px, transparent 0, transparent 50%);
+}
+
+/* Narrator scales to fill the full stage height.
+   height:121% + bottom:-21% keeps the table clipped below
+   and puts ~4px headroom above the character's head at any window size. */
+.tut-win__narrator {
+  position: absolute;
+  height: 100%;
+  width: auto;
+  bottom: calc(-8% - 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+  display: block;
+}
+
+/* ── Dialogue box ── */
+
+.tut-win__dialogue {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--color-panel-dark);
+  user-select: none;
+  overflow: hidden;
+}
+
+.tut-win__step-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--color-accent);
+  line-height: 1.6;
+  flex-shrink: 0;
+}
+
+.tut-win__text {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-text);
+  line-height: 2.2;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Typewriter cursor ── */
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.tut-cursor {
+  display: inline-block;
+  color: var(--color-accent);
+  animation: blink 0.7s step-start infinite;
+  margin-left: 1px;
+  font-size: 7px;
+}
+
+/* ── Click-to-continue indicator ── */
+
+.tut-continue {
+  display: inline-block;
+  color: var(--color-accent);
+  animation: blink 0.55s step-start infinite;
+  margin-left: 4px;
+  font-size: 7px;
+}
+
+/* ── Navigation row ── */
+
+.tut-win__nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  background: var(--color-panel-bg);
+}
+
+.tut-win__nav-left,
+.tut-win__nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tut-btn {
+  font-size: 6px;
+  padding: 5px 10px;
+}
+
+.tut-btn--done {
+  border-color: var(--color-accent2);
+  color: var(--color-accent2);
+}
+
+.tut-btn--done:hover {
+  background: var(--color-accent2);
+  color: var(--color-bg);
+}
+
+.tut-hint {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-accent);
+  animation: blink 0.9s step-start infinite;
+  padding: 4px 0;
+}
+
+.tut-skip {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  padding: 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tut-skip:hover { color: var(--color-text); }

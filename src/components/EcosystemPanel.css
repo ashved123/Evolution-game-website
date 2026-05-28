@@ -117,6 +117,74 @@
   color: var(--color-text-dim);
 }
 
+/* Population bars */
+.eco-pops {
+  border: none;
+  border-top: 2px solid var(--color-border);
+  border-radius: 0;
+  padding: 10px 16px 12px;
+}
+
+.eco-pops__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.eco-pop-row {
+  display: grid;
+  grid-template-columns: 22px 1fr 32px 36px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.eco-pop-row__emoji { font-size: 13px; text-align: center; }
+
+.eco-pop-row__track {
+  position: relative;
+  height: 7px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-border);
+}
+
+.eco-pop-row__fill {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.eco-pop-row__cap-line {
+  position: absolute;
+  right: 0;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--color-border);
+}
+
+.eco-pop-row__val {
+  font-size: 6px;
+  color: var(--color-text);
+  text-align: right;
+}
+
+.eco-pop-row__val--extinct {
+  color: #a07868;
+}
+
+.eco-pop-row__cap {
+  font-size: 5px;
+  color: var(--color-text-dim);
+}
+
+.eco-pops__hint {
+  font-size: 5px;
+  color: var(--color-text-dim);
+  margin-top: 6px;
+}
+
 /* Dead matter */
 .dead-matter {
   border: none;

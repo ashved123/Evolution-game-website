@@ -116,6 +116,49 @@
   border-top: 1px solid var(--color-border);
 }
 
+.ssp-desc-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 6px;
+}
+
+.ssp-desc {
+  font-size: 6px;
+  color: var(--color-text-dim);
+  line-height: 2;
+  margin: 0;
+}
+
+.ssp-special {
+  font-size: 6px;
+  color: var(--color-accent2);
+  line-height: 1.8;
+  margin: 0;
+}
+
+.ssp-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ssp-trait {
+  font-size: 5px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  background: var(--color-panel-bg);
+}
+
+.ssp-concepts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .ssp-avg-label {
   font-family: 'Press Start 2P', monospace;
   font-size: 5px;

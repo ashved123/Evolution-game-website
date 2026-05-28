@@ -1,39 +1,83 @@
-// Codon → trait label + stat modifiers.
-// Modifiers are added on top of a species' base stats (result clamped 0–100).
+// Each codon has a single expression modifier (how much it adds to whatever trait it sits in).
+// Three codons per trait → the trait modifier = sum of all three.
+// Maximum range per trait: 3 × (+20) = +60 or 3 × (−20) = −60 on top of the species base stat.
 
 export const CODONS = {
-  ATG: { label: 'Baseline',          effects: {} },
-  TAA: { label: 'Average build',     effects: {} },
-  GCC: { label: 'Standard vision',   effects: { speed: +5 } },
-  GAC: { label: 'Keen eyesight',     effects: { speed: +15, strength: +10 } },
-  AAT: { label: 'Cryptic colouring', effects: { camouflage: +22, speed: -5 } },
-  GGC: { label: 'Fast metabolism',   effects: { metabolism: +22, resilience: -12 } },
-  CGT: { label: 'Heat adapted',      effects: { heatTolerance: +25, metabolism: -8 } },
-  TGC: { label: 'Thick integument',  effects: { resilience: +20, heatTolerance: +10, speed: -8 } },
-  CTA: { label: 'Immune upregulated',effects: { resilience: +22 } },
-  ACG: { label: 'Streamlined body',  effects: { speed: +18, resilience: -10 } },
-  TCA: { label: 'Night vision',      effects: { speed: +8, camouflage: +10 } },
-  GTA: { label: 'High endurance',    effects: { resilience: +12, metabolism: +10 } },
+  // ── Strong positive (+20) ────────────────────────────────────────
+  GAC: { label: 'Hypermorphic',       modifier: +20 },
+  ATT: { label: 'Overexpressed',      modifier: +20 },
+  // ── Moderate positive (+12) ─────────────────────────────────────
+  TGC: { label: 'Dominant allele',    modifier: +12 },
+  ACG: { label: 'Upregulated',        modifier: +12 },
+  GGC: { label: 'Strong expression',  modifier: +12 },
+  // ── Mild positive (+5) ──────────────────────────────────────────
+  CGT: { label: 'Active promoter',    modifier:  +5 },
+  AGC: { label: 'Mild upregulation',  modifier:  +5 },
+  TCA: { label: 'Expressed locus',    modifier:  +5 },
+  // ── Neutral (0) ─────────────────────────────────────────────────
+  ATG: { label: 'Start codon',        modifier:   0 },
+  TAA: { label: 'Stop codon',         modifier:   0 },
+  GCC: { label: 'Silent',             modifier:   0 },
+  // ── Mild negative (−5) ──────────────────────────────────────────
+  GTA: { label: 'Weak promoter',      modifier:  -5 },
+  TAT: { label: 'Mild suppression',   modifier:  -5 },
+  TCG: { label: 'Reduced expression', modifier:  -5 },
+  // ── Moderate negative (−12) ─────────────────────────────────────
+  AAT: { label: 'Hypomorphic',        modifier: -12 },
+  CCG: { label: 'Loss of function',   modifier: -12 },
+  GAT: { label: 'Silenced locus',     modifier: -12 },
+  // ── Strong negative (−20) ───────────────────────────────────────
+  GGA: { label: 'Null mutation',      modifier: -20 },
+  CTA: { label: 'Truncated gene',     modifier: -20 },
 }
 
-export const STAT_META = [
-  { key: 'speed',         label: 'Speed',       color: '#42a5f5' },
-  { key: 'resilience',    label: 'Resilience',  color: '#66bb6a' },
-  { key: 'metabolism',    label: 'Metabolism',  color: '#ffa726' },
-  { key: 'camouflage',    label: 'Camouflage',  color: '#ab47bc' },
-  { key: 'heatTolerance', label: 'Heat Tol.',   color: '#ef5350' },
-  { key: 'strength',      label: 'Strength',    color: '#ffee58' },
+// Stat groups for the gene editor UI
+export const STAT_GROUPS = [
+  {
+    label: 'Movement',
+    stats: [
+      { key: 'speed',         label: 'Speed',         color: '#42a5f5', desc: 'Movement rate & awareness range' },
+      { key: 'strength',      label: 'Strength',      color: '#ffee58', desc: 'Hunt force & seed dispersal radius' },
+    ],
+  },
+  {
+    label: 'Survival',
+    stats: [
+      { key: 'constitution',  label: 'Constitution',  color: '#ff8a65', desc: 'Lifespan length' },
+      { key: 'resilience',    label: 'Resilience',    color: '#66bb6a', desc: 'Resistance to death & disease' },
+      { key: 'heatTolerance', label: 'Heat Tolerance',color: '#ef5350', desc: 'Survival in hot/cold events' },
+    ],
+  },
+  {
+    label: 'Behaviour',
+    stats: [
+      { key: 'reasoning',     label: 'Reasoning',     color: '#26c6da', desc: 'Decision quality & pathfinding' },
+      { key: 'camouflage',    label: 'Camouflage',    color: '#ab47bc', desc: 'Stealth — reduces predator detection' },
+    ],
+  },
+  {
+    label: 'Physiology',
+    stats: [
+      { key: 'metabolism',    label: 'Metabolism',    color: '#ffa726', desc: 'Hunger drain rate & seed drop rate' },
+      { key: 'fertility',     label: 'Fertility',     color: '#f06292', desc: 'Breeding speed & offspring rate' },
+    ],
+  },
 ]
 
-// Apply codon effects to a base stats object, return new stats (clamped 0–100)
-export function applyDNA(baseStats, dnaSequence) {
+export const STAT_META = STAT_GROUPS.flatMap(g => g.stats)
+export const STAT_KEYS  = STAT_META.map(s => s.key)
+
+// Default neutral 3-codon string for any trait slot
+export const NEUTRAL_CODONS = ['ATG', 'TAA', 'GCC']
+
+// dna is now { [statKey]: [codon1, codon2, codon3] }
+// Each trait's modifier = sum of its three codons' modifier values, clamped 0–100.
+export function applyDNA(baseStats, dna) {
   const result = { ...baseStats }
-  dnaSequence.forEach(codon => {
-    const entry = CODONS[codon]
-    if (!entry) return
-    Object.entries(entry.effects).forEach(([stat, delta]) => {
-      result[stat] = Math.min(100, Math.max(0, (result[stat] ?? 0) + delta))
-    })
-  })
+  for (const key of STAT_KEYS) {
+    const codons = dna?.[key] ?? NEUTRAL_CODONS
+    const modifier = codons.reduce((sum, c) => sum + (CODONS[c]?.modifier ?? 0), 0)
+    result[key] = Math.min(100, Math.max(0, (baseStats[key] ?? 0) + modifier))
+  }
   return result
 }

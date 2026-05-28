@@ -29,9 +29,98 @@
   width: 600px;
 }
 
+.dropdown-panel--gene {
+  width: 860px;
+  max-width: 92vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.gene-panel-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100vh - 60px);
+}
+
+.gene-panel-split__editor {
+  width: 480px;
+  flex-shrink: 0;
+  border-right: 2px solid var(--color-border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.gene-panel-split__genetics {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
 @keyframes panelIn {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== EVENT POPUP ===== */
+
+.event-popup {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  background: var(--color-panel-dark);
+  border: 2px solid var(--color-accent);
+  box-shadow: 4px 4px 0 rgba(80, 50, 20, 0.35);
+  padding: 16px 24px 14px;
+  max-width: 360px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  animation: popup-in 0.25s ease;
+}
+
+@keyframes popup-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.event-popup__concept {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.event-popup__emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.event-popup__title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--color-text);
+}
+
+.event-popup__desc {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-text-dim);
+  line-height: 1.9;
+}
+
+.event-popup__dismiss {
+  margin-top: 4px;
+  font-size: 6px;
+  padding: 5px 12px;
 }
 
 /* Empty state inside gene lab when no species selected */
