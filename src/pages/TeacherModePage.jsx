@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import FloatingWindow  from '../components/FloatingWindow.jsx'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import FloatingWindow   from '../components/FloatingWindow.jsx'
 import SpotlightOverlay from '../components/SpotlightOverlay.jsx'
-import IslandCanvas    from '../components/IslandCanvas.jsx'
-import { SPECIES }     from '../data/species.js'
+import IslandCanvas     from '../components/IslandCanvas.jsx'
+import { SPECIES }      from '../data/species.js'
 import { useSimulation } from '../simulation/useSimulation.js'
-import { K }           from '../simulation/engine.js'
+import { K }            from '../simulation/engine.js'
 import { CARRYING_CAPACITY, SEASON_K_FACTOR } from '../simulation/agentConfig.js'
-import { getSeason }   from '../simulation/individuals.js'
+import { getSeason }    from '../simulation/individuals.js'
 import narratorFriendly from '../assets/sprites/narrator/pose_friendly.png'
 import narratorNeutral  from '../assets/sprites/narrator/pose_neutral.png'
 import narratorThreat   from '../assets/sprites/narrator/pose_threat.png'
@@ -14,7 +14,7 @@ import '../components/TutorialWindow.css'
 import './TeacherModePage.css'
 
 const NARRATOR_IMGS = { friendly: narratorFriendly, neutral: narratorNeutral, threat: narratorThreat }
-const CHAR_DELAY  = 26
+const CHAR_DELAY  = 22
 const MOUTH_DELAY = 160
 const ALL_K = { ...K, ...CARRYING_CAPACITY }
 
@@ -44,15 +44,15 @@ function KFormula({ pops, tick }) {
   return (
     <div className="tm-formula">
       <div className="tm-formula__title">LIVE: Carrying Capacity for Deer</div>
-      <div className="tm-formula__row">effectiveK = baseK x (food / optimal) x season</div>
+      <div className="tm-formula__row">effectiveK = baseK × (food / optimal) × season</div>
       <div className="tm-formula__row tm-formula__row--calc">
-        = 60 x ({adjusted.toFixed(0)} / {optimal}) x {seasonMult.toFixed(2)}
+        = 60 × ({adjusted.toFixed(0)} / {optimal}) × {seasonMult.toFixed(2)}
       </div>
       <div className="tm-formula__row tm-formula__row--result">
         = <span className="tm-formula__val">{effectiveK}</span>
         <span className="tm-formula__season"> {season.name}</span>
       </div>
-      <div className="tm-formula__note">Grass: {grassCount} | Boar eating {(boarCount * 0.4).toFixed(0)} of it | Adjusted: {adjusted.toFixed(0)}</div>
+      <div className="tm-formula__note">Grass: {grassCount} | Boar consuming {(boarCount * 0.4).toFixed(0)} units | Adjusted: {adjusted.toFixed(0)}</div>
     </div>
   )
 }
@@ -64,11 +64,11 @@ function DiversityFormula({ diversity, arrivedSpecies }) {
   if (!entries.length) return null
   return (
     <div className="tm-formula">
-      <div className="tm-formula__title">LIVE: Genetic Diversity Index (0 = inbred, 100 = diverse)</div>
+      <div className="tm-formula__title">LIVE: Genetic Diversity Index (0 = fully inbred, 100 = diverse)</div>
       {entries.map(([spId, idx]) => {
-        const sp   = SPECIES.find(s => s.id === spId)
-        const col  = idx >= 60 ? '#4caf50' : idx >= 30 ? '#c08820' : '#c04020'
-        const warn = idx < 30 ? ' INBREEDING RISK' : ''
+        const sp  = SPECIES.find(s => s.id === spId)
+        const col = idx >= 60 ? '#4caf50' : idx >= 30 ? '#c08820' : '#c04020'
+        const warn = idx < 30 ? '  INBREEDING RISK' : ''
         return (
           <div key={spId} className="tm-formula__bar-row">
             <span className="tm-formula__bar-label">{sp?.name}</span>
@@ -91,236 +91,211 @@ function NutrientFormula({ deadMatter, pops }) {
     <div className="tm-formula">
       <div className="tm-formula__title">LIVE: Decomposer Loop</div>
       <div className="tm-formula__row">Dead matter pool: <b>{Math.round(deadMatter)}</b> units</div>
-      <div className="tm-formula__row">Fungi: <b>{fungi}</b> individuals x 0.15 = <b>{consumed}</b> consumed/tick</div>
+      <div className="tm-formula__row">Fungi: <b>{fungi}</b> × 0.15 = <b>{consumed}</b> consumed/tick</div>
       <div className="tm-formula__row tm-formula__row--result">
-        Nutrients returned: {consumed} x 0.45 = <span className="tm-formula__val">{returned}</span> /tick
+        Nutrients returned: {consumed} × 0.45 = <span className="tm-formula__val">{returned}</span> /tick
       </div>
       <div className="tm-formula__note">Nutrients boost grass and tree growth by up to 65%</div>
     </div>
   )
 }
 
-// ── Question component ────────────────────────────────────────────────
-
-function QuestionBlock({ question, answeredIdx, onAnswer }) {
+function ConceptList({ concepts }) {
+  if (!concepts?.length) return null
   return (
-    <div className="tm-question">
-      <div className="tm-question__q">{question.q}</div>
-      <div className="tm-question__options">
-        {question.options.map((opt, i) => {
-          const isChosen  = answeredIdx === i
-          const isCorrect = i === question.answer
-          let cls = 'tm-question__opt'
-          if (answeredIdx !== null) {
-            if (isCorrect) cls += ' tm-question__opt--correct'
-            else if (isChosen) cls += ' tm-question__opt--wrong'
-            else cls += ' tm-question__opt--dim'
-          }
-          return (
-            <button key={i} className={cls}
-              onClick={() => answeredIdx === null && onAnswer(i)}
-              disabled={answeredIdx !== null}
-            >
-              {String.fromCharCode(65 + i)}. {opt}
-            </button>
-          )
-        })}
-      </div>
-      {answeredIdx !== null && (
-        <div className={`tm-question__response ${answeredIdx === question.answer ? 'tm-question__response--correct' : 'tm-question__response--wrong'}`}>
-          {question.responses[answeredIdx]}
-        </div>
-      )}
+    <div className="tm-concepts">
+      {concepts.map(c => (
+        <span key={c} className="concept-badge">{c}</span>
+      ))}
     </div>
   )
 }
 
-// ── Walkthrough script ────────────────────────────────────────────────
+// ── Walkthrough script — 20 acts covering all 22 biology concepts ─────
+// Each act has a `concepts` array listing the specific rubric concepts demonstrated.
 
 const ACTS = [
   {
-    title:  'What You Are Looking At',
-    sprite: 'neutral',
-    body:   'This is Island of Life. A real-time ecosystem simulation.\n\nEvery organism you see is a software agent making independent decisions every animation frame. The hawk circling up there is running a targeting algorithm. The beetles are returning to their home trees. The deer are deciding whether to graze or run.\n\nNone of it is animated. None of it is scripted. It is running right now.\n\nI suggest you watch for a moment before we continue.[[friendly]]',
-    onEnter: (_sim, setSpeed) => setSpeed(1),
+    title:    'What You Are Looking At',
+    sprite:   'neutral',
+    concepts: [],
+    body: `This is Island of Life. A real-time ecosystem simulation built as a high school biology final project demonstrating Evolution, Ecology, and DNA.\n\nEvery organism you see is a software agent making independent decisions every animation frame. The hawk circling overhead is running a targeting algorithm. The beetles are returning to their home trees. The deer are deciding whether to graze or flee.\n\nNone of it is animated. None of it is scripted. It is running right now.\n\nI suggest you watch for a moment before we continue.[[friendly]]`,
+    onEnter:     (_sim, setSpeed) => setSpeed(1),
     highlightEl: '.island-canvas-wrap',
   },
   {
-    title:  'What This Project Covers',
-    sprite: 'neutral',
-    body:   'This project demonstrates mastery of three biology topics: Evolution, Ecology, and DNA.\n\nNot as a poster. Not as a diagram. As a functioning simulation where every concept is mechanically enforced by mathematics running at sixty frames per second.\n\nTwenty-two specific biology concepts. All of them are in there. We will go through them.\n\nI will try to keep it interesting. You have been grading projects all day. I understand.',
+    title:    'What This Project Covers',
+    sprite:   'neutral',
+    concepts: ['Evolution', 'Ecology', 'DNA & Genetics'],
+    body: `This project demonstrates mastery of three biology topics: Evolution, Ecology, and DNA.\n\nNot as a poster. Not as a diagram. As a functioning simulation where every concept is mechanically enforced by mathematics running at sixty frames per second.\n\nEvolution: natural selection, mutation, adaptation, fitness, genetic drift, bottleneck effect, allele frequency, inbreeding depression, sexual selection.\n\nEcology: predator-prey relationships, trophic levels, carrying capacity, limiting factors, population growth, symbiotic relationships, autotrophs and heterotrophs, matter and energy flow, habitat dependency, resource competition.\n\nDNA: base pairing, codons, gene expression, point mutation.\n\nTwenty-two specific biology concepts. All mechanically implemented. All running live on this island right now.[[friendly]]`,
   },
   {
-    title:  'The Food Web',
-    sprite: 'friendly',
-    body:   'The island supports nine species across five trophic levels.\n\nFungi at the base as decomposers. Grass and trees as producers. Beetles, deer, and boar as primary consumers. Frogs and monitor lizards as secondary consumers. The hawk at the top as the apex predator.\n\nThe Ecosystem panel has an interactive SVG food web diagram. Arrows show energy flow direction. When a species goes extinct, its arrows go dashed and the cascade propagates upward.\n\nThe code does not model a food web. It models individual hunger. The food web emerges.',
+    title:    'Trophic Levels & The Food Web',
+    sprite:   'friendly',
+    concepts: ['Trophic Levels', 'Matter & Energy Flow', 'Food Web'],
+    body: `The island supports ten species across five trophic levels.\n\nFungi at the base as decomposers. Grass and trees as producers — autotrophs. Beetles, fireflies, deer, and boar as primary consumers. Frogs and monitor lizards as secondary consumers. The hawk at the top as the apex predator.\n\nTrophic levels describe the position of organisms in a food chain based on energy transfer from producers to consumers. Grass is a producer. Beetles are primary consumers. Frogs are secondary consumers. Hawks are apex predators.\n\nEnergy flows upward through trophic levels. Approximately 10% transfers at each step. This means the island can support many more beetles than hawks — reflected in their respective carrying capacities: 300 beetles versus 10 hawks.\n\nThe Ecosystem panel has an interactive food web diagram. When a species goes extinct, its arrows go dashed. The cascade propagates upward. The code does not model a food web. It models individual hunger. The food web emerges from that.`,
   },
   {
-    title:  'The Individual-Based Model',
-    sprite: 'neutral',
-    body:   'The IBM. Every animal is a separate software agent with its own state machine.\n\nWANDER: exploring its preferred biome.\nHUNT: locked onto a specific prey individual, pathfinding directly toward it.\nFLEE: predator within awareness range, everything else abandoned.\nCOURT: pathfinding toward an accepted mate during breeding season.\n\nThe agent transitions between states based on distance, hunger, season, and reasoning ability. Population dynamics emerge from thousands of these transitions running simultaneously.',
-    question: {
-      q: 'A deer is grazing peacefully. A hawk enters its awareness radius. What happens?',
-      options: [
-        'The deer keeps grazing. The hawk needs to get closer first.',
-        'The deer sets the hawk as a food target.',
-        'The deer abandons everything and switches to FLEE.',
-        'The deer alerts nearby herd members.',
-      ],
-      answer: 2,
-      responses: [
-        'Incorrect. Awareness radius is exactly where FLEE triggers. The deer does not wait to see what happens.',
-        'Hawks eat deer. Not the other way around. Re-read the food web.',
-        'Correct. FLEE overrides all other states. Food targets, mate targets, herd bonds. All of it abandoned. Survival is not negotiable.',
-        'Deer do not have a communication system in this simulation. They run. That is it.',
-      ],
-    },
+    title:    'Autotrophs, Heterotrophs & Symbiosis',
+    sprite:   'neutral',
+    concepts: ['Autotrophs vs Heterotrophs', 'Symbiotic Relationships', 'Decomposer Loop'],
+    body: `Every organism on the island is either an autotroph or a heterotroph.\n\nAutotrophs — grass and fig trees — produce their own energy using soil nutrients. They require no other organism to eat. They are the base of all energy on the island.\n\nHeterotrophs consume other organisms. This includes every animal on the island and the fungi.\n\nThe fungi represent a symbiotic relationship with the ecosystem. They break down dead organisms and return 45% of the consumed matter as soil nutrients, indirectly helping grass and trees grow. Remove them and grass growth slows. Producers weaken. The entire food web weakens from the bottom up.\n\nThis is not a passive relationship. The decomposer loop is mechanically load-bearing. Without it, the nutrient cycle collapses and nothing grows efficiently.\n\nThe numbers below are running live.`,
+    formula: 'nutrients',
   },
   {
-    title:  'Carrying Capacity',
-    sprite: 'neutral',
-    body:   'K is not a fixed ceiling. Every frame: effectiveK = baseK multiplied by food ratio multiplied by season multiplier.\n\nIf grass falls below optimal for deer, deer K shrinks proportionally. In winter, all K values halve. In spring they rise 15%. Deer and boar compete for the same grass. Each boar mathematically removes 0.4 units from deer-accessible food.\n\nWhen population exceeds 80% of effective K, a crowding multiplier increases hunger drain. Logistic growth. Not labelled. Enforced.\n\nThe numbers below are running live from this island right now.',
-    formula: 'k',
-    onEnter: (_sim, setSpeed) => setSpeed(3),
+    title:    'Predator-Prey Dynamics',
+    sprite:   'neutral',
+    concepts: ['Predator-Prey Relationships', 'Population Cycles', 'Ecosystem Balance'],
+    body: `Predator-prey relationships describe interactions where one organism hunts another, creating population cycles and ecosystem balance.\n\nIn this simulation: more frogs mean more food for hawks. Hawk populations rise. Hawks eat more frogs. Frog populations decline. Hawks go hungry. Hawk populations fall. Frogs recover. The cycle continues without any line of code specifying it.\n\nThis mirrors the wolf-elk dynamics in Yellowstone National Park. When wolves were reintroduced in 1995, elk populations shifted, vegetation recovered in previously overgrazed areas, and river systems were altered by changed elk movement patterns. One predator restructured an entire ecosystem.\n\nPredator-prey oscillations are not a game mechanic. They are a mathematical consequence of hunger, reproduction, and death running simultaneously.[[threat]]`,
   },
   {
-    title:  'Natural Selection',
-    sprite: 'neutral',
-    body:   'There is no selector.\n\nWhat exists is: agents with low speed get caught. Agents with low constitution starve faster when crowded. Agents with low resilience die younger. These agents reproduce less.\n\nOver generations, the variation deltas of surviving individuals accumulate in the gene pool. The population shifts toward stronger stats. Natural selection. Without a single line of code that says prefer the fitter individual.[[threat]]\n\nDarwin described this in 1859. It took 165 more years to run it in a browser.\n\nClick the button below to watch it happen now.',
+    title:    'Carrying Capacity & Limiting Factors',
+    sprite:   'neutral',
+    concepts: ['Carrying Capacity', 'Limiting Factors', 'Logistic Population Growth'],
+    body: `Carrying capacity is the maximum population size an environment can support based on available resources like food and space.\n\nK is not a fixed ceiling. Every frame: effectiveK = baseK × food ratio × season multiplier.\n\nIf grass falls below optimal for deer, deer K shrinks proportionally. In winter, all K values drop. In spring they rise 15%. Deer and boar compete for the same grass — each boar removes 0.4 units from deer-accessible food supply.\n\nWhen population exceeds 80% of effective K, a crowding multiplier increases hunger drain. Population growth slows as resources become limiting. This is logistic growth. Not a label on a diagram. An equation running every frame.\n\nLimiting factors — food, space, season, disease, habitat — restrict population growth exactly as real ecological theory predicts. The numbers below are running live from this island.`,
+    formula:  'k',
+    onEnter:  (_sim, setSpeed) => setSpeed(3),
+  },
+  {
+    title:    'Natural Selection & Adaptation',
+    sprite:   'neutral',
+    concepts: ['Natural Selection', 'Adaptation', 'Directional Selection'],
+    body: `There is no selector.\n\nWhat exists is: agents with low speed get caught. Agents with low constitution starve faster when crowded. Agents with low resilience die younger. These agents reproduce less. Over generations, the variation deltas of surviving individuals accumulate in the gene pool. The population shifts toward stronger stats. Natural selection. Without a single line of code that says prefer the fitter individual.[[threat]]\n\nThis reflects Darwin's core insight: individuals vary in heritable traits; certain traits improve survival and reproduction; successful traits become more common over generations; populations adapt to environmental conditions over time.\n\nAdaptation is the long-term result. During a cold snap, organisms with higher heat tolerance survive at higher rates. Over multiple generations, the average heat tolerance of the population rises. The environment selected for it. The population became better adapted. Over time, this leads to directional selection — gradual shifts in population traits as an emergent, non-random process driven by environmental pressure.\n\nClick below to trigger a disease outbreak. Watch which species takes the hit.`,
+    onEnter:  (_sim, setSpeed) => setSpeed(3),
     trialBtn: {
       label:  'Trigger Disease Outbreak',
       action: (sim) => sim.triggerEvent('disease'),
     },
   },
   {
-    title:  'DNA and the Gene Lab',
-    sprite: 'friendly',
-    body:   'Every species has a DNA sequence. Nine traits, each encoded by three codons. Each codon is three base pairs: A, T, G, or C.\n\nChange a single base and the codon changes. The codon maps to a biological modifier between negative 20 and positive 20. That modifier shifts the effective stat. Change ATG to GTG in the metabolism row and every individual of that species burns energy at a different rate.\n\nThis is a point mutation. The project demonstrates it by making the consequences visible in a running simulation.\n\nOpen the Gene Lab tab at the top of the game to see it.',
-  },
-  {
-    title:  'Gene Expression',
-    sprite: 'neutral',
-    body:   'The full pipeline:\n\nA/T/G/C bases form a codon. The codon maps to a modifier. The modifier adds to the species base stat. The result is clamped between 0 and 100. That number determines the observable phenotype.\n\nThe Gene Lab phenotype panel describes what each number means in biological terms. Higher metabolism shows how many hunger units drain per second. Higher camouflage shows what percentage of predator detection is blocked.\n\nGenotype to phenotype. In code.',
-  },
-  {
-    title:  'Mutation Injection',
-    sprite: 'friendly',
-    body:   'Designing a mutation in the Gene Lab does nothing on its own. The player must inject it.\n\nSelecting individuals injects the new variation deltas into those specific agents. They are now genetically distinct from the rest of the population. Their offspring inherit the mutation with 50% probability each. Mendelian segregation applied to a continuous trait model.\n\nThe Genetics panel then tracks what percentage of the population carries the mutation over time. The chart shows whether it is spreading, declining, or neutral.\n\nClick below to inject a speed mutation into five deer right now.',
-    trialBtn: {
-      label:  'Inject Speed Mutation into Deer',
-      action: (sim) => sim.injectMutation('deer', { speed: 15 }, 5),
-    },
-  },
-  {
-    title:  'Inbreeding Depression',
-    sprite: 'threat',
-    body:   'Every tick the simulation computes the mean variance of all nine stats across the population. Low variance means the gene pool is narrowing.\n\nWhen diversity drops below a threshold, a death rate multiplier activates. Zero diversity produces up to 60% higher mortality per tick. The Genetics panel shows this as a colour-coded bar per species.\n\nThe Florida panther. The cheetah. The northern elephant seal. Documented cases of populations surviving a bottleneck and paying the genetic cost for generations afterward.\n\nThe bars below are running live. If anything is red, something on this island is in trouble.',
-    formula: 'diversity',
-  },
-  {
-    title:  'Sexual Selection',
-    sprite: 'neutral',
-    body:   'During breeding season, females scan males within their awareness radius. Each male receives a desirability score: the average of his speed, strength, constitution, and resilience.\n\nThe female acceptance threshold is set by her reasoning stat. High reasoning means a threshold of 66. Low reasoning means a threshold of 28. She chooses the highest-scoring male who clears her bar and pathfinds toward him.\n\nNo programmer specified which traits should be attractive. Female choice determined it. Over generations this drives evolutionary pressure on all four signal traits.\n\nPeacocks would understand.[[friendly]]',
-    onEnter: (_sim, setSpeed) => setSpeed(1),
-    question: {
-      q: 'What determines how selective a female is when evaluating mates?',
-      options: [
-        'Her fertility stat',
-        'Her reasoning stat',
-        'The current season',
-        'How hungry she is',
-      ],
-      answer: 1,
-      responses: [
-        'Incorrect. Fertility controls how fast she reproduces, not who she chooses.',
-        'Correct. High reasoning means a higher acceptance threshold. The mathematics of choosiness. Smarter females are pickier.',
-        'Breeding season determines when she looks. Reasoning determines what she accepts. Not the same thing.',
-        'Hunger below 40 cancels courting entirely. But it does not affect the threshold. Try again.',
-      ],
-    },
-  },
-  {
-    title:  'Beetle Lifecycle',
-    sprite: 'friendly',
-    body:   'Beetles do not wander freely. Each beetle has a homeTreeId: a specific tree it lives on. When not hunting, it returns to that tree.\n\nWhen ready to reproduce, it acquires a breedTreeId: a different tree. It travels there, lays two to four eggs at that location, and the larvae hatch already bonded to that tree.\n\nThe population hard cap is numTrees multiplied by 4. Destroy the forest and the beetle colony collapses regardless of anything else.\n\nMonitors eat beetles. Frogs eat beetles. Hawks eat frogs. Cut the trees and the cascade reaches the hawk. One species. Four trophic connections.',
-    onEnter: (_sim, setSpeed) => setSpeed(1),
-    highlightEl: '.island-canvas-wrap',
-  },
-  {
-    title:  'Environmental Events',
-    sprite: 'neutral',
-    body:   'Six environmental events fire at random intervals. Drought. Wildfire. Volcanic ash. Cold snap. Disease outbreak. New migration.\n\nEach is a real ecological concept with real mathematical consequences. Wildfire cuts grass by 65% instantly and initiates a population crash: a bottleneck event. Survivors carry a narrower genetic profile. Evolution resumes from what remains.\n\nA pressure indicator rises in the Events panel between events. The player can watch it build and prepare mutations before the next event fires.\n\nClick the button below. Watch what happens to the grass population.',
-    onEnter: (_sim, setSpeed) => setSpeed(3),
+    title:    'Fitness, Genetic Drift & Bottleneck Effect',
+    sprite:   'neutral',
+    concepts: ['Fitness', 'Genetic Drift', 'Bottleneck Effect', 'Allele Frequency'],
+    body: `Fitness is not physical strength. It is overall reproductive success. A hawk that catches more prey produces more offspring and passes its hunting traits forward. Over time, the average hunting ability of the population rises.\n\nBut natural selection is not the only mechanism of evolution.\n\nGenetic drift is the random change in allele frequencies in a population, especially in small populations where chance has a strong effect. After a disaster reduces deer numbers, certain traits may become common purely by chance rather than survival advantage.\n\nThe bottleneck effect occurs when a population is drastically reduced due to an event, leaving survivors with low genetic diversity. The Florida panther. The cheetah. The northern elephant seal. Documented populations that survived bottlenecks and paid the genetic cost for generations afterward — surviving populations carry only a fraction of original genetic diversity, increasing vulnerability to future changes.\n\nIn this simulation, wildfire cuts grass by 65% instantly. Deer populations crash. Survivors carry a narrower genetic profile. Evolution resumes from what remains.[[threat]]\n\nClick below. Watch what happens.`,
+    onEnter:  (_sim, setSpeed) => setSpeed(3),
     trialBtn: {
       label:  'Fire a Wildfire Now',
       action: (sim) => sim.triggerEvent('wildfire'),
     },
   },
   {
-    title:  'Decomposer Loop',
-    sprite: 'neutral',
-    body:   'Dead matter accumulates from every animal death and plant senescence. Fungi consume it and return 45% as soil nutrients. Nutrients accelerate producer growth by up to 65%.\n\nFungi are not decorative. Remove them and grass grows slower, trees seed less often, herbivores face food scarcity, and the food web weakens from the bottom.\n\nThis is matter and energy flow through an ecosystem. The carbon cycle, modelled. It runs whether or not anyone is watching it.',
+    title:    'The Individual-Based Model',
+    sprite:   'neutral',
+    concepts: ['Individual-Based Model', 'Agent State Machine', 'Emergent Behavior'],
+    body: `The IBM. Every animal is a separate software agent with its own state machine.\n\nWANDER: exploring its preferred biome.\nHUNT: locked onto a specific prey individual, pathfinding directly toward it. The agent must physically reach the prey's coordinates to eat it. No phantom consumption from across the map.\nFLEE: predator within awareness range. Everything else abandoned.\nCOURT: pathfinding toward an accepted mate during breeding season.\n\nThe reasoning stat drives two things: target selection — high-reasoning agents pick prey with the best energy-gain-to-distance ratio — and path quality — low-reasoning agents add up to 63 degrees of random noise per frame.\n\nHawks bypass standard movement entirely: they soar in a wide ellipse around their nest tree, diving at 2.2× speed when prey is locked. Frogs must be in water to mate. Beetles must physically travel to a different tree to lay eggs.\n\nPopulation dynamics emerge from thousands of these transitions running simultaneously.`,
+  },
+  {
+    title:    'DNA, Base Pairing & Codons',
+    sprite:   'friendly',
+    concepts: ['DNA Base Pairing', 'Codons', 'Point Mutation', 'Gene Structure'],
+    body: `Every species has a DNA sequence. Nine traits, each encoded by three codons. Each codon is three base pairs: A, T, G, or C.\n\nDNA base pairing is the rule that DNA bases match in pairs — A with T, and C with G — to ensure accurate genetic replication. When DNA copies itself, correct base pairing preserves genetic information unless a mutation occurs.\n\nCodons are groups of three DNA bases that code for amino acids, which form proteins that determine traits. A codon change in beetles can alter a protein affecting camouflage, making them harder for predators to detect.\n\nChange a single base and the codon changes. The codon maps to a biological modifier between negative 20 and positive 20. That modifier shifts the effective stat. Change ATG to GTG in the metabolism row and every individual of that species burns energy at a different rate.\n\nThis is a point mutation. The project demonstrates it by making the consequences visible in a running simulation.\n\nOpen the Gene Lab tab at the top of the game to see it.`,
+  },
+  {
+    title:    'Gene Expression',
+    sprite:   'neutral',
+    concepts: ['Gene Expression', 'Genotype vs Phenotype', 'Trait Modification'],
+    body: `The full pipeline:\n\nA/T/G/C bases form a codon. The codon maps to a modifier. The modifier adds to the species base stat. The result is clamped between 0 and 100. That number determines the observable phenotype.\n\nThis reflects real biological processes: DNA encodes traits through gene expression, mutations introduce variation within populations, and beneficial mutations increase in frequency through natural selection.\n\nThe Gene Lab phenotype panel describes what each number means in biological terms. Higher metabolism shows how many hunger units drain per second. Higher camouflage shows what percentage of predator detection is blocked. Higher speed means more distance covered per frame.\n\nGenotype to phenotype. One pipeline. Every species. Every frame.\n\nThis creates a visible link between molecular change and organism behaviour, showing how DNA directly influences ecological success — the relationship the simulation was built to demonstrate.`,
+  },
+  {
+    title:    'Mutation & Allele Frequency',
+    sprite:   'friendly',
+    concepts: ['Mutation', 'Allele Frequency', 'Inheritance', 'Mendelian Segregation'],
+    body: `Mutation is a random change in an organism's DNA that creates new genetic variation within a population. A mutation that increases frog speed may help it escape hawk predation more often, improving survival and long-term fitness.\n\nDesigning a mutation in the Gene Lab does nothing on its own. The player must inject it.\n\nInjecting selects specific individuals and alters their variation deltas. They are now genetically distinct from the rest of the population. Their offspring inherit the mutation with 50% probability each — Mendelian segregation applied to a continuous trait model.\n\nThe Genetics panel then tracks what percentage of the population carries the mutation over time — allele frequency. The chart shows whether it is spreading, declining, or neutral. If the mutation improves survival under current conditions, allele frequency rises. If conditions change, a previously neutral mutation may become advantageous or harmful.\n\nClick below to inject a speed mutation into five deer right now.`,
+    trialBtn: {
+      label:  'Inject Speed Mutation into Deer',
+      action: (sim) => sim.injectMutation('deer', { speed: 15 }, 5),
+    },
+  },
+  {
+    title:    'Inbreeding Depression',
+    sprite:   'threat',
+    concepts: ['Inbreeding Depression', 'Genetic Diversity', 'Population Vulnerability'],
+    body: `Every tick the simulation computes the mean variance of all nine stats across the population. Low variance means the gene pool is narrowing.\n\nWhen diversity drops below a threshold, a death rate multiplier activates. Zero diversity produces up to 60% higher mortality per tick. The Genetics panel shows this as a colour-coded bar per species.\n\nIn real ecosystems, this is well-documented. After a bottleneck, the surviving population carries only a fraction of the original genetic diversity. This increases vulnerability to disease and environmental change — because fewer trait variations exist to respond to new pressures.\n\nThe cheetah. The Florida panther. The northern elephant seal. All documented cases where low genetic variation significantly reduces long-term survival capacity. The simulation demonstrates this through its inbreeding depression mechanic.\n\nThe bars below are running live. If anything is red, something on this island is in serious trouble.`,
+    formula: 'diversity',
+  },
+  {
+    title:    'Sexual Selection & Mate Choice',
+    sprite:   'neutral',
+    concepts: ['Sexual Selection', 'Fitness Signalling', 'Mate Choice'],
+    body: `During breeding season, females scan males within their awareness radius. Each male receives a desirability score: the average of his speed, strength, constitution, and resilience.\n\nThe female acceptance threshold is set by her reasoning stat. High reasoning means a threshold of 66. Low reasoning means a threshold of 28. She chooses the highest-scoring male who clears her threshold and pathfinds toward him.\n\nNo programmer specified which traits should be attractive. Female choice determined it. Over generations this drives evolutionary pressure on all four signal traits simultaneously.\n\nThis models real sexual selection — mate choice creates selection pressure independent of direct survival advantage. Populations can evolve traits not because they help survival but because they attract mates. The genetic consequences are indistinguishable from natural selection in the short term.\n\nPeacocks would understand.[[friendly]]`,
+    onEnter:  (_sim, setSpeed) => setSpeed(1),
+  },
+  {
+    title:    'Beetle Lifecycle & Habitat Dependency',
+    sprite:   'friendly',
+    concepts: ['Habitat Dependency', 'Resource Competition', 'Lifecycle & Reproduction'],
+    body: `Beetles do not wander freely. Each beetle has a homeTreeId — a specific tree it lives on. When not hunting, it returns to that tree.\n\nWhen ready to reproduce, it acquires a breedTreeId: a different tree. It travels there, lays two to four eggs at that location, and the larvae hatch already bonded to that tree. The population hard cap is numTrees × 4. Destroy the forest and the beetle colony collapses regardless of anything else.\n\nThis models habitat dependency — beetles require trees for their entire lifecycle. Frogs require ponds to breed and desiccate rapidly away from water. Fireflies die quickly outside pond biomes. Each species has a specific habitat requirement that limits where and how much it can grow.\n\nResource competition is also at work: deer and boar share grass. Boar eat beetles. Every consumer competes for limited resources, enforcing the carrying capacity calculations that govern the whole system.\n\nMonitors eat beetles. Frogs eat beetles. Hawks eat frogs. Cut the trees and the cascade reaches the hawk. One habitat. Four trophic connections.`,
+    onEnter:     (_sim, setSpeed) => setSpeed(1),
+    highlightEl: '.island-canvas-wrap',
+  },
+  {
+    title:    'Environmental Events & Ecosystem Disturbance',
+    sprite:   'neutral',
+    concepts: ['Bottleneck Effect', 'Ecological Resilience', 'Ecosystem Disturbance'],
+    body: `Six environmental events fire at random intervals. Drought. Wildfire. Volcanic ash. Cold snap. Disease outbreak. New migration.\n\nEach is a real ecological concept with real mathematical consequences. Wildfire cuts grass by 65% instantly and initiates a bottleneck event. Survivors carry a narrower genetic profile. Evolution resumes from what remains.\n\nThe cascade from a wildfire: trees burn, beetles lose habitat. Deer populations that initially increase as predators lose forest cover later crash from starvation as plant resources deplete. Hawk populations follow. This chain reaction shows how interconnected ecosystems truly are.\n\nThese disturbances are based on real-world events becoming more frequent due to climate change. In real ecosystems, they reduce population sizes, alter habitats, and shift species distributions. In the simulation they force rapid ecological change — demonstrating how fragile ecosystems respond to sudden environmental stress.\n\nA pressure indicator rises in the Events panel between events. Players can watch it build and prepare mutations in advance.`,
+    onEnter:  (_sim, setSpeed) => setSpeed(3),
+    trialBtn: {
+      label:  'Fire a Wildfire Now',
+      action: (sim) => sim.triggerEvent('wildfire'),
+    },
+  },
+  {
+    title:    'The Decomposer Loop',
+    sprite:   'neutral',
+    concepts: ['Matter & Energy Flow', 'Nutrient Cycling', 'Ecosystem Stability'],
+    body: `Dead matter accumulates from every animal death and plant senescence. Fungi consume it and return 45% as soil nutrients. Nutrients accelerate producer growth by up to 65%.\n\nFungi are not decorative. Remove them and grass grows slower, trees seed less often, herbivores face food scarcity, and the food web weakens from the bottom.\n\nThis is matter and energy flow through an ecosystem. Dead organisms are not wasted. Their stored chemical energy re-enters the system through decomposition, becoming available to autotrophs again. The carbon cycle, modelled.\n\nThe ecological system models food webs, energy transfer, and population regulation. Producers grow using logistic models limited by carrying capacity, while consumers transfer energy through predation. The decomposer loop closes the cycle — energy and matter circulate continuously through the system, never created or destroyed, only transformed.\n\nIt runs whether or not anyone is watching it.`,
     formula: 'nutrients',
   },
   {
-    title:  'The Three-Topic Connection',
-    sprite: 'friendly',
-    body:   'Here is the required connection between Evolution, Ecology, and DNA.\n\nA beetle gets a heat tolerance mutation: a codon change. That mutation changes gene expression and raises the effective stat. In a cold snap, it survives while low-tolerance individuals die. Its offspring inherit the mutation. Allele frequency rises. The beetle population holds. The food web holds.\n\nDNA drove Evolution drove Ecology. One event. Three topics. Connected through a single codon change and its consequences in a living simulation.\n\nClick below to fire the cold snap. The chain of consequences plays out live.',
+    title:    'The Three-Topic Connection',
+    sprite:   'friendly',
+    concepts: ['Evolution-Ecology-DNA Connection', 'Systems Thinking', 'Emergent Behaviour'],
+    body: `Here is the required connection between Evolution, Ecology, and DNA.\n\nA mutation changes a codon — a point mutation in the camouflage gene. That codon change alters gene expression and raises the effective camouflage stat. In the next predation event, camouflaged individuals are harder to detect. They survive more often. They reproduce more often. Their offspring inherit the mutation with 50% probability. Allele frequency rises. The beetle population stabilises. The food web holds.\n\nDNA drove Evolution drove Ecology. One codon change. Three topics. Connected through a single base pair substitution and its consequences in a living simulation.\n\nThe relationship is circular: genetics produces variation through mutation, ecology determines which traits are advantageous, and evolution filters those traits through survival and reproduction. These interactions create emergent behaviour — population cycles, ecosystem stability, and collapse events that were never explicitly programmed.\n\nClick below to trigger a cold snap. Watch the chain.[[friendly]]`,
     trialBtn: {
       label:  'Trigger Cold Snap',
       action: (sim) => sim.triggerEvent('cold_snap'),
     },
-    question: {
-      q: 'Which sequence correctly describes how DNA connects to Ecology in this simulation?',
-      options: [
-        'Codon change causes immediate population growth',
-        'Codon changes gene expression, changes survival odds, changes allele frequency, changes ecosystem balance',
-        'Mutation makes the species look different, attracting mates',
-        'DNA change updates the Gene Lab score',
-      ],
-      answer: 1,
-      responses: [
-        'Incorrect. Mutations spread through reproduction over many generations. There is no immediate boost.',
-        'Correct. That is the chain. DNA to gene expression to evolution to ecology. Every step is mechanically running.',
-        'Phenotype in this simulation is statistical, not visual. No animal can see another animal\'s heat tolerance stat.',
-        'There is no score. This is not a game show. Biology does not grade on a curve.',
-      ],
-    },
   },
   {
-    title:  'What This Demonstrates',
-    sprite: 'neutral',
-    body:   'Twenty-two biology concepts. Not on a poster. Not in a video.\n\nMechanically implemented in approximately three thousand lines of code, written from scratch, without a game engine, without a biology framework, without a physics library.\n\nNatural selection was not labelled. It emerged from hunger mathematics. Carrying capacity was not diagrammed. It is enforced by an equation running every frame. Sexual selection was not explained. Females are running a desirability algorithm right now, above your head.[[threat]]\n\nTo build this correctly required understanding each concept well enough to translate it into mathematics. That is what this project demonstrates.',
+    title:    'Real-World Significance',
+    sprite:   'friendly',
+    concepts: ['Conservation Biology', 'Climate Change', 'Island Biogeography', 'Antibiotic Resistance'],
+    body: `The systems in this simulation are motivated by real biological, ecological, and environmental processes observed in natural ecosystems.\n\nYellowstone National Park. When wolves were reintroduced in 1995, elk populations shifted, vegetation recovered in overgrazed areas, and river systems changed because elk avoided certain valleys. One predator-prey relationship restructured an entire ecosystem. This simulation models that same chain reaction every frame.\n\nAntibiotic resistance demonstrates natural selection in real time. Bacteria with resistance genes survive antibiotic treatment and dominate the population. The simulation shows the identical mechanism through cold snaps and heat tolerance — organisms with the right trait survive, reproduce, shift the allele frequency.\n\nEndangered species such as cheetahs and Florida panthers demonstrate the real cost of the bottleneck effect. Critically low genetic diversity increases disease vulnerability and reduces adaptive capacity. The inbreeding depression mechanic in this simulation models exactly that consequence.\n\nThe ability for organisms to migrate and colonise the island reflects real ecological processes such as species dispersal and island biogeography. In nature, ecosystems are constantly shaped by migration events, where new species arrive, compete, and either integrate or go extinct depending on environmental conditions.[[friendly]]`,
     onEnter: (_sim, setSpeed) => setSpeed(5),
+  },
+  {
+    title:    'Rationale, Reflection & Works Cited',
+    sprite:   'neutral',
+    concepts: ['Design Rationale', 'Individual Reflection', 'Simulation Limitations'],
+    body: `Why a game.\n\nA traditional explanation cannot show all of these concepts simultaneously. A poster shows one diagram. A game lets evolution, ecology, and genetics happen at the same time, and lets you examine each one while the others continue running.\n\nThe god perspective was deliberate — seeing the entire island makes complex interactions legible. Sequential species arrival was deliberate — complexity builds gradually so each relationship is visible before the next one arrives. The gene editor makes mutations interactive so you can watch consequences rather than wait for random chance.\n\nSimplifications were necessary and honest. Real DNA has billions of base pairs. This has nine traits, three codons each. Real ecosystems take centuries to show evolutionary change. This compresses it to minutes. Every simplification was a trade between accuracy and observability.\n\nWhat was learned: before building this, evolution was a concept that happened over millions of years to populations you could not observe. After writing the natural selection code, it became a mathematical consequence of survival probability and reproduction rate. The mechanism became visible. Natural selection was never coded. It appeared.\n\nBiology is not a set of isolated topics. It is an interconnected system where genetics determines variation, ecology determines environmental pressure, and evolution determines long-term change. By having these relationships run in real time, the Island of Life allows anyone to observe how small molecular changes can scale into large ecosystem-level effects.\n\nWorks Cited:\nnps.gov/yell/learn/nature/wolf.htm — Yellowstone wolf-elk dynamics\neducation.nationalgeographic.org/resource/food-web/ — Food web structure and energy flow[[friendly]]`,
+    onEnter: (_sim, setSpeed) => setSpeed(3),
   },
 ]
 
 export default function TeacherModePage() {
-  const [actIdx,      setActIdx]      = useState(0)
-  const [charCount,   setCharCount]   = useState(0)
-  const [isTyping,    setIsTyping]    = useState(true)
-  const [mouthOpen,   setMouthOpen]   = useState(false)
+  const [actIdx,         setActIdx]         = useState(0)
+  const [charCount,      setCharCount]      = useState(0)
+  const [isTyping,       setIsTyping]       = useState(true)
+  const [mouthOpen,      setMouthOpen]      = useState(false)
   const [spriteOverride, setSpriteOverride] = useState(null)
-  const [speed,       setSpeed]       = useState(1)
-  const [worldLoaded, setWorldLoaded] = useState(false)
-  const [answeredIdx, setAnsweredIdx] = useState(null)
-  const [trialFired,  setTrialFired]  = useState(false)
+  const [speed,          setSpeed]          = useState(1)
+  const [worldLoaded,    setWorldLoaded]    = useState(false)
+  const [trialFired,     setTrialFired]     = useState(false)
   const [winPos,  setWinPos]  = useState({ x: 60, y: 0 })
-  const [winSize, setWinSize] = useState({ w: 860, h: 340 })
+  const [winSize, setWinSize] = useState({ w: 900, h: 360 })
 
   const typingRef = useRef(null)
   const mouthRef  = useRef(null)
 
   useEffect(() => {
     const h = window.innerHeight
-    setWinPos({ x: 60, y: Math.max(48, h - 370) })
+    setWinPos({ x: 60, y: Math.max(48, h - 390) })
   }, [])
 
   const act = ACTS[actIdx]
   const { clean: fullText, changes: spriteChanges } = parseBody(act.body)
   const isDone = charCount >= fullText.length
 
-  // Reset on act change + run onEnter
   useEffect(() => {
     clearInterval(typingRef.current)
     clearInterval(mouthRef.current)
@@ -328,17 +303,14 @@ export default function TeacherModePage() {
     setIsTyping(true)
     setMouthOpen(false)
     setSpriteOverride(null)
-    setAnsweredIdx(null)
     setTrialFired(false)
   }, [actIdx])
 
-  // Run onEnter after sim is ready
   const simRef = useRef(null)
   useEffect(() => {
     if (simRef.current && act.onEnter) act.onEnter(simRef.current, setSpeed)
   }, [actIdx])
 
-  // Typewriter
   useEffect(() => {
     if (!isTyping) return
     typingRef.current = setInterval(() => {
@@ -354,7 +326,6 @@ export default function TeacherModePage() {
     return () => clearInterval(typingRef.current)
   }, [isTyping, fullText, spriteChanges])
 
-  // Mouth
   useEffect(() => {
     if (!isTyping) { setMouthOpen(false); return }
     mouthRef.current = setInterval(() => setMouthOpen(o => !o), MOUTH_DELAY)
@@ -383,7 +354,6 @@ export default function TeacherModePage() {
   const displayed     = fullText.slice(0, charCount)
   const lines         = displayed.split('\n')
 
-  // Simulation
   const biomeScoresRef = useRef({})
   const posMapRef      = useRef(new Map())
   const popsRef        = useRef({})
@@ -429,7 +399,6 @@ export default function TeacherModePage() {
   return (
     <div className="tm">
 
-      {/* Full-screen simulation */}
       <div className="tm__bg">
         <IslandCanvas
           speed={speed}
@@ -447,45 +416,42 @@ export default function TeacherModePage() {
         />
         {!worldLoaded && <div className="tm__loading">Initialising ecosystem…</div>}
 
-        {/* Top bar */}
         <div className="tm__topbar">
-          <span className="tm__toplabel">📖 Teacher Walkthrough — Island of Life</span>
+          <span className="tm__toplabel">Island of Life — Biology Final Project Showcase</span>
           <div className="tm__topcontrols">
-            <button className={`tm__spd${speed===0?' tm__spd--on':''}`} onClick={()=>setSpeed(0)}>⏸</button>
-            <button className={`tm__spd${speed===1?' tm__spd--on':''}`} onClick={()=>setSpeed(1)}>👁</button>
-            <button className={`tm__spd${speed===3?' tm__spd--on':''}`} onClick={()=>setSpeed(3)}>▶▶</button>
+            <button className={`tm__spd${speed===0?' tm__spd--on':''}`} onClick={()=>setSpeed(0)}>Pause</button>
+            <button className={`tm__spd${speed===1?' tm__spd--on':''}`} onClick={()=>setSpeed(1)}>1x</button>
+            <button className={`tm__spd${speed===3?' tm__spd--on':''}`} onClick={()=>setSpeed(3)}>3x</button>
+            <button className={`tm__spd${speed===5?' tm__spd--on':''}`} onClick={()=>setSpeed(5)}>5x</button>
             <span className="tm__yr">Yr {sim.year}</span>
           </div>
         </div>
       </div>
 
-      {/* Spotlight overlay — behind the window (z 150), above canvas (z 30) */}
       {act.highlightEl && isDone && (
         <SpotlightOverlay selector={act.highlightEl} zIndex={48} />
       )}
 
-      {/* Walkthrough window */}
       <FloatingWindow
-        title="📖 Teacher Walkthrough"
+        title={`Showcase — ${actIdx + 1} / ${ACTS.length} — ${act.title}`}
         pos={winPos} size={winSize} zIndex={200}
         onClose={() => {}}
         onFocus={() => {}}
         onMove={setWinPos}
         onResize={setWinSize}
-        minW={560} minH={260}
+        minW={600} minH={280}
       >
         <div className="tut-win">
 
-          {/* Progress pips */}
           <div className="tut-win__meta">
             <span className="tut-win__counter">Step {actIdx + 1} / {ACTS.length}</span>
             <div className="tut-win__bar">
-              {ACTS.map((_, i) => (
+              {ACTS.map((a, i) => (
                 <div key={i}
                   className={`tut-win__pip${i <= actIdx ? ' tut-win__pip--done' : ''}`}
                   style={{ cursor: 'pointer' }}
                   onClick={() => setActIdx(i)}
-                  title={ACTS[i].title}
+                  title={a.title}
                 />
               ))}
             </div>
@@ -493,7 +459,6 @@ export default function TeacherModePage() {
 
           <div className="tut-win__divider" />
 
-          {/* Narrator + dialogue */}
           <div className="tut-win__content-row">
             <div className={`tut-win__stage tut-win__stage--${stepSprite}`}>
               {Object.entries(NARRATOR_IMGS).map(([key, src]) => (
@@ -518,34 +483,19 @@ export default function TeacherModePage() {
                       </span>
                 )}
 
-                {/* Live formula */}
-                {isDone && act.formula === 'k' && (
-                  <KFormula pops={sim.pops} tick={sim.tick} />
-                )}
-                {isDone && act.formula === 'diversity' && (
-                  <DiversityFormula diversity={sim.diversity ?? {}} arrivedSpecies={sim.arrivedSpecies} />
-                )}
-                {isDone && act.formula === 'nutrients' && (
-                  <NutrientFormula deadMatter={sim.deadMatter ?? 0} pops={sim.pops} />
-                )}
+                {isDone && act.formula === 'k'         && <KFormula pops={sim.pops} tick={sim.tick} />}
+                {isDone && act.formula === 'diversity' && <DiversityFormula diversity={sim.diversity ?? {}} arrivedSpecies={sim.arrivedSpecies} />}
+                {isDone && act.formula === 'nutrients' && <NutrientFormula deadMatter={sim.deadMatter ?? 0} pops={sim.pops} />}
 
-                {/* Question */}
-                {isDone && act.question && (
-                  <QuestionBlock
-                    question={act.question}
-                    answeredIdx={answeredIdx}
-                    onAnswer={setAnsweredIdx}
-                  />
-                )}
+                {isDone && <ConceptList concepts={act.concepts} />}
               </div>
             </div>
           </div>
 
-          {/* Nav */}
           <div className="tut-win__nav">
             <div className="tut-win__nav-left">
               {!isFirst && (
-                <button className="pixel-btn tut-btn" onClick={goPrev}>← Back</button>
+                <button className="pixel-btn tut-btn" onClick={goPrev}>Back</button>
               )}
               {act.trialBtn && isDone && (
                 <button
@@ -553,16 +503,16 @@ export default function TeacherModePage() {
                   onClick={fireTrial}
                   disabled={trialFired}
                 >
-                  {trialFired ? '✓ Done' : `⚡ ${act.trialBtn.label}`}
+                  {trialFired ? 'Done' : act.trialBtn.label}
                 </button>
               )}
             </div>
             <div className="tut-win__nav-right">
               {!isDone
-                ? <button className="pixel-btn tut-btn" onClick={skipTyping}>Skip ▶▶</button>
+                ? <button className="pixel-btn tut-btn" onClick={skipTyping}>Skip</button>
                 : isLast
-                  ? <span className="tut-win__counter" style={{color:'var(--color-accent2)'}}>Walkthrough complete.</span>
-                  : <button className="pixel-btn tut-btn" onClick={goNext}>Next →</button>
+                  ? <span className="tut-win__counter" style={{color:'var(--color-accent2)'}}>Showcase complete.</span>
+                  : <button className="pixel-btn tut-btn" onClick={goNext}>Next</button>
               }
             </div>
           </div>

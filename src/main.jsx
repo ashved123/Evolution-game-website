@@ -33,6 +33,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/create-island"  element={<ProtectedRoute><CreateIslandPage /></ProtectedRoute>} />
           <Route path="/game/:id"       element={<ProtectedRoute><App /></ProtectedRoute>} />
           <Route path="/teacher"        element={<TeacherModePage />} />
+          <Route path="/showcase"       element={<TeacherModePage />} />
           <Route path="*"               element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

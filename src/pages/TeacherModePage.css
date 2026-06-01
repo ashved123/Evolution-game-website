@@ -250,3 +250,13 @@
 
 .tm-trial-btn:hover { background: #5a9068; color: var(--color-bg); }
 .tm-trial-btn--done { border-color: var(--color-border); color: var(--color-text-dim); }
+
+/* ── Concept badges row shown at bottom of each act ── */
+.tm-concepts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}

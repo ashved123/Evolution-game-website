@@ -66,3 +66,23 @@
   transform: none;
   box-shadow: var(--shadow);
 }
+
+.create-foster-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+.create-foster-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 7px;
+  border-color: var(--color-accent2);
+  color: var(--color-accent2);
+  letter-spacing: 0.5px;
+}
+
+.create-foster-btn:hover {
+  background: var(--color-accent2);
+  color: var(--color-bg);
+}

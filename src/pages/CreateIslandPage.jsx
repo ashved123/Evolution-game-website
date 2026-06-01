@@ -57,6 +57,14 @@ export default function CreateIslandPage() {
           </button>
         </form>
 
+        <div className="create-foster-divider" />
+        <button
+          className="pixel-btn create-foster-btn"
+          onClick={() => navigate('/showcase')}
+        >
+          CLICK THIS IF YOU ARE MR. FOSTER
+        </button>
+
       </div>
     </div>
   )
