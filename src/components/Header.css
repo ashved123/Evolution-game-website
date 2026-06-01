@@ -55,6 +55,23 @@
 
 .header__year strong { color: var(--color-accent2); }
 
+.header__health {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  padding: 3px 7px;
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
+  letter-spacing: 1px;
+}
+.header__health--good { background: #2d5a2d; color: #7ec87e; border-color: #4a8a4a; }
+.header__health--warn { background: #5a4a10; color: #d4a840; border-color: #8a7020; }
+.header__health--crit { background: #5a1a1a; color: #e06060; border-color: #8a2020; animation: crit-pulse 1s ease-in-out infinite alternate; }
+
+@keyframes crit-pulse {
+  from { opacity: 0.8; }
+  to   { opacity: 1;   }
+}
+
 .header__tut-btn {
   font-family: 'Press Start 2P', monospace;
   font-size: 8px;
@@ -75,6 +92,23 @@
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
+
+.header__dev-btn {
+  font-size: 11px;
+  width: 22px;
+  height: 22px;
+  background: #2a2a2a;
+  border: 1px solid #555;
+  color: #ffee58;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: var(--shadow);
+  opacity: 0.7;
+}
+.header__dev-btn:hover { opacity: 1; border-color: #ffee58; }
 
 /* ── Nav tabs ── */
 
@@ -139,6 +173,12 @@
   outline: none;
   cursor: pointer;
   border: 1px solid var(--color-border);
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.speed-slider--active {
+  opacity: 1;
+  background: linear-gradient(to right, var(--color-accent), var(--color-border));
 }
 
 .speed-slider::-webkit-slider-thumb {

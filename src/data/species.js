@@ -55,7 +55,7 @@ export const SPECIES = [
       constitution:  ['ACG', 'TGC', 'GCC'],   // +24 — deep roots, long life
       resilience:    ['ACG', 'ATG', 'GCC'],   // +12 — bark resistance
       strength:      ['CGT', 'TAA', 'GCC'],   // +5  — heavy seed dispersal
-      fertility:     ['ACT', 'GTA', 'GTA'],   // -30 — corrupted: seed production at 0
+      fertility:     ['GGA', 'GTA', 'GTA'],   // -30 — corrupted: seed production at 0
     },
     stats: {
       speed:          0,
@@ -211,6 +211,30 @@ export const SPECIES = [
       reasoning:     68,
       fertility:     35,
       constitution:  70,
+    },
+  },
+  {
+    id: 'firefly',
+    emoji: '✨',
+    name: 'Pond Firefly',
+    trophic: 'Primary Consumer',
+    pop: 20,
+    dna: {
+      ...neutralDna(),
+      camouflage:    ['GTA', 'TAA', 'GCC'],   // -5  — glowing makes them visible
+      metabolism:    ['TGC', 'ATG', 'GCC'],   // +12 — high-energy bioluminescence
+      fertility:     ['ACG', 'ATG', 'GCC'],   // +12 — prolific summer breeding
+    },
+    stats: {
+      speed:         55,
+      resilience:    28,
+      metabolism:    72,
+      camouflage:    25,
+      heatTolerance: 42,
+      strength:      15,
+      reasoning:     18,
+      fertility:     80,
+      constitution:  30,
     },
   },
   {

@@ -18,7 +18,7 @@
   background: var(--color-panel-dark);
 }
 
-.ind-card__emoji { font-size: 18px; flex-shrink: 0; }
+.ind-card__emoji { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
 
 .ind-card__name {
   font-size: 6px;
@@ -47,6 +47,36 @@
   flex-shrink: 0;
 }
 .ind-card__close:hover { color: var(--color-text); }
+
+.ind-card__live {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ind-card__live-item {
+  font-size: 5.5px;
+  color: var(--color-text-dim);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ind-card__live-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-border);
+  display: inline-block;
+}
+
+.ind-card__live-fill {
+  display: block;
+  height: 100%;
+  transition: width 0.3s ease;
+}
 
 .ind-card__stats {
   padding: 8px 10px;

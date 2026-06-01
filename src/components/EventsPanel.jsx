@@ -1,6 +1,7 @@
 import React from 'react'
 import { EVENTS } from '../simulation/engine.js'
 import { SPECIES } from '../data/species.js'
+import { SPRITE_ICONS } from '../utils/spriteIcons.js'
 import './EventsPanel.css'
 
 const SPECIES_META = Object.fromEntries(SPECIES.map(s => [s.id, s]))
@@ -17,13 +18,16 @@ const TROPHIC_COLOR = {
   'Decomposer':           '#ce93d8',
 }
 
-const CALM = { emoji: '☀️', title: 'Calm conditions', desc: 'No active events. The ecosystem is stable.' }
+const CALM = { title: 'Calm conditions', desc: 'No active events. The ecosystem is stable.' }
+const CAUSE_LABEL = { starvation: 'starvation', predation: 'predated', age: 'old age', inbreeding: 'inbreeding' }
 
-export default function EventsPanel({ nextArrival, pops = {}, livePops = {}, event, log = [] }) {
+export default function EventsPanel({ nextArrival, pops = {}, livePops = {}, event, log = [], pressure = 0, deathLog = [] }) {
   const activeDef = event ? EVENTS[event.id] : null
   const envDisplay = activeDef
-    ? { emoji: activeDef.emoji, title: activeDef.title, desc: activeDef.desc, concept: activeDef.concept }
+    ? { title: activeDef.title, desc: activeDef.desc, concept: activeDef.concept }
     : CALM
+
+  const pressureLevel = pressure >= 80 ? 'high' : pressure >= 50 ? 'med' : null
 
   // Compute arrival progress
   let progress = null
@@ -48,7 +52,7 @@ export default function EventsPanel({ nextArrival, pops = {}, livePops = {}, eve
         {nextArrival && sp ? (
           <div className="ep-arrival">
             <div className="ep-arrival__preview">
-              <span className="ep-arrival__emoji">{sp.emoji}</span>
+              <img src={SPRITE_ICONS[nextArrival.spId]} className="ep-arrival__emoji" style={{ imageRendering: 'pixelated' }} alt={nextArrival.spId} />
               <div className="ep-arrival__info">
                 <span className="ep-arrival__name">{nextArrival.label}</span>
                 <span className="ep-arrival__msg">{nextArrival.message}</span>
@@ -76,8 +80,7 @@ export default function EventsPanel({ nextArrival, pops = {}, livePops = {}, eve
           </div>
         ) : (
           <div className="ep-arrival ep-arrival--done">
-            <span className="ep-arrival__emoji">🏝</span>
-            <span className="ep-arrival__name">All species have arrived</span>
+              <span className="ep-arrival__name">All species have arrived</span>
           </div>
         )}
       </div>
@@ -89,7 +92,6 @@ export default function EventsPanel({ nextArrival, pops = {}, livePops = {}, eve
           {activeDef && <span className="concept-badge">{envDisplay.concept}</span>}
         </div>
         <div className="ep-env">
-          <span className="ep-env__emoji">{envDisplay.emoji}</span>
           <div className="ep-env__text">
             <span className="ep-env__title">{envDisplay.title}</span>
             <span className="ep-env__desc">{envDisplay.desc}</span>
@@ -98,7 +100,40 @@ export default function EventsPanel({ nextArrival, pops = {}, livePops = {}, eve
         {activeDef && (
           <div className="ep-env__ticks">{event.ticksLeft} tick{event.ticksLeft !== 1 ? 's' : ''} remaining</div>
         )}
+        {!activeDef && pressureLevel && (
+          <div className={`ep-pressure ep-pressure--${pressureLevel}`}>
+            <div className="ep-pressure__text">
+              <span className="ep-pressure__label">
+                {pressureLevel === 'high' ? 'Environmental pressure critical' : 'Environmental pressure rising'}
+              </span>
+              <div className="ep-pressure__bar-wrap">
+                <div className="ep-pressure__bar" style={{ width: `${pressure}%` }} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ── Death log ────────────────────────────────────────────── */}
+      {deathLog.length > 0 && (
+        <div className="ep-section pixel-box">
+          <span className="section-label">Recent Deaths</span>
+          <span className="concept-badge" style={{ marginLeft: 6, marginBottom: 6, display:'inline-block' }}>Population Dynamics</span>
+          <div className="ep-log">
+            {deathLog.slice(0, 14).map((entry, i) => {
+              const sp = SPECIES_META[entry.spId]
+              return (
+                <div key={i} className="ep-log__row">
+                  <span className="ep-log__title">
+                    {entry.count} {sp?.name ?? entry.spId} — {CAUSE_LABEL[entry.cause] ?? entry.cause}
+                  </span>
+                  <span className="ep-log__year">Yr {entry.year}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Event log ────────────────────────────────────────────── */}
       {log.length > 0 && (
@@ -107,7 +142,6 @@ export default function EventsPanel({ nextArrival, pops = {}, livePops = {}, eve
           <div className="ep-log">
             {log.map((entry, i) => (
               <div key={i} className="ep-log__row">
-                <span className="ep-log__emoji">{entry.emoji}</span>
                 <span className="ep-log__title">{entry.title}</span>
                 <span className="ep-log__year">Yr {entry.year}</span>
                 {entry.concept && <span className="concept-badge">{entry.concept}</span>}

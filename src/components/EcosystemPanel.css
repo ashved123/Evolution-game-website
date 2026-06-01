@@ -2,9 +2,6 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
 }
 
 /* Event banner */
@@ -141,7 +138,7 @@
   margin-bottom: 4px;
 }
 
-.eco-pop-row__emoji { font-size: 13px; text-align: center; }
+.eco-pop-row__emoji { width: 13px; height: 13px; object-fit: contain; }
 
 .eco-pop-row__track {
   position: relative;

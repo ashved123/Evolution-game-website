@@ -52,9 +52,10 @@
 }
 
 .animal-card__emoji {
-  font-size: 28px;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
   flex-shrink: 0;
-  line-height: 1;
 }
 
 .animal-card__info {

@@ -105,14 +105,16 @@
   color: var(--color-text-dim);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .time-win__mating {
   font-family: 'Press Start 2P', monospace;
-  font-size: 6px;
+  font-size: 5px;
   color: #f48fb1;
   animation: pulse-m 1.2s ease-in-out infinite;
+  white-space: nowrap;
 }
 
 @keyframes pulse-m {
@@ -139,6 +141,53 @@
 
 .time-win__controls {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.time-win__mode-btns {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.time-win__mode-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  padding: 5px 8px;
+  background: var(--color-panel-dark);
+  border: 2px solid var(--color-border);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  flex: 1;
+}
+.time-win__mode-btn:hover { border-color: var(--color-accent); color: var(--color-text); }
+.time-win__mode-btn--active {
+  background: var(--color-accent);
+  border-color: var(--color-text);
+  color: #fff7ef;
+}
+
+.time-win__warp {
+  display: flex;
   align-items: center;
   gap: 8px;
 }
+
+.time-win__warp-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+.time-win__warp-slider { flex: 1; }
+
+.time-win__warp-val {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-text-dim);
+  min-width: 22px;
+  text-align: right;
+}
+.time-win__warp-val--active { color: var(--color-accent); }

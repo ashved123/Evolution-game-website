@@ -51,8 +51,9 @@
 }
 
 .ep-arrival__emoji {
-  font-size: 32px;
-  line-height: 1;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
@@ -196,4 +197,42 @@
   font-family: 'Press Start 2P', monospace;
   font-size: 5px;
   color: var(--color-text-dim);
+}
+
+/* ── Pressure warning ── */
+.ep-pressure {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid;
+}
+.ep-pressure--med  { border-color: #8a7020; background: rgba(90,72,16,0.12); }
+.ep-pressure--high { border-color: #8a2020; background: rgba(90,20,20,0.15); animation: pressure-pulse 1.2s ease-in-out infinite alternate; }
+
+@keyframes pressure-pulse {
+  from { opacity: 0.8; } to { opacity: 1; }
+}
+
+.ep-pressure__icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+
+.ep-pressure__text { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+
+.ep-pressure__label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-text);
+}
+
+.ep-pressure__bar-wrap {
+  height: 4px;
+  background: rgba(120,90,60,0.2);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.ep-pressure__bar {
+  height: 100%;
+  background: linear-gradient(to right, #c08820, #c04020);
+  transition: width 0.5s ease;
 }

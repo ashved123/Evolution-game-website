@@ -1,6 +1,7 @@
 import React from 'react'
 import { SPECIES } from '../data/species.js'
 import { STAT_GROUPS } from '../data/codons.js'
+import { SPRITE_ICONS } from '../utils/spriteIcons.js'
 import './GeneticsPanel.css'
 
 const STAT_LABEL = Object.fromEntries(
@@ -58,7 +59,7 @@ function trendLabel(values) {
   return { text: '→ stable',  cls: 'gp-trend--flat' }
 }
 
-export default function GeneticsPanel({ mutationRegistry = {}, mutationFreqHistory = {}, pops = {}, highlightMutationId, onHighlight }) {
+export default function GeneticsPanel({ mutationRegistry = {}, mutationFreqHistory = {}, pops = {}, highlightMutationId, onHighlight, diversity = {} }) {
   const mutations = Object.values(mutationRegistry).sort((a, b) => b.tick - a.tick)
 
   return (
@@ -70,6 +71,35 @@ export default function GeneticsPanel({ mutationRegistry = {}, mutationFreqHisto
         <span className="concept-badge">Natural Selection</span>
         <span className="concept-badge">Hardy-Weinberg</span>
       </div>
+
+      {/* Genetic diversity index per species */}
+      {Object.keys(diversity).length > 0 && (
+        <div className="gp-diversity">
+          <div className="gp-diversity__label">
+            Genetic Diversity
+            <span className="concept-badge" style={{ marginLeft: 6 }}>Inbreeding</span>
+          </div>
+          <div className="gp-diversity__rows">
+            {Object.entries(diversity).sort(([, a], [, b]) => a - b).map(([spId, idx]) => {
+              const sp = SPECIES_META[spId]
+              if (!sp) return null
+              const level = idx >= 60 ? 'high' : idx >= 30 ? 'med' : 'low'
+              return (
+                <div key={spId} className="gp-div-row">
+                  <img src={SPRITE_ICONS[spId]} className="gp-div-row__emoji" style={{ imageRendering: 'pixelated' }} alt={spId} />
+                  <div className="gp-div-row__bar-wrap">
+                    <div className={`gp-div-row__bar gp-div-row__bar--${level}`}
+                      style={{ width: `${idx}%` }} />
+                  </div>
+                  <span className="gp-div-row__val">{idx}</span>
+                  {level === 'low' && <span className="gp-div-row__warn">LOW</span>}
+                </div>
+              )
+            })}
+          </div>
+          <div className="gp-diversity__note">Low diversity → inbreeding depression → higher death rate</div>
+        </div>
+      )}
 
       {mutations.length === 0 ? (
         <div className="gp-empty-state">
@@ -93,7 +123,10 @@ export default function GeneticsPanel({ mutationRegistry = {}, mutationFreqHisto
               <div key={meta.mutId} className={`gp-mut-card ${isHighlit ? 'gp-mut-card--highlighted' : ''}`}>
 
                 <div className="gp-mut-card__head">
-                  <span className="gp-mut-card__species">{sp?.emoji} {sp?.name}</span>
+                  <span className="gp-mut-card__species">
+                    {sp && <img src={SPRITE_ICONS[sp.id]} style={{ width: 16, height: 16, imageRendering: 'pixelated', verticalAlign: 'middle', marginRight: 4 }} alt={sp.id} />}
+                    {sp?.name}
+                  </span>
                   <span className="gp-mut-card__tick">tick {meta.tick}</span>
                 </div>
 

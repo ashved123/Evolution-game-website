@@ -145,3 +145,34 @@
   border-color: #ffee58;
   background: rgba(255, 238, 88, 0.1);
 }
+
+/* ── Genetic diversity ── */
+.gp-diversity {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.gp-diversity__label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--color-text-dim);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+}
+.gp-diversity__rows { display: flex; flex-direction: column; gap: 5px; }
+.gp-div-row { display: flex; align-items: center; gap: 6px; }
+.gp-div-row__emoji { width: 12px; height: 12px; object-fit: contain; }
+.gp-div-row__bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.gp-div-row__bar { height: 100%; transition: width 0.6s ease; }
+.gp-div-row__bar--high { background: #4caf50; }
+.gp-div-row__bar--med  { background: #c08820; }
+.gp-div-row__bar--low  { background: #c04020; }
+.gp-div-row__val { font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--color-text-dim); min-width: 20px; text-align: right; }
+.gp-div-row__warn { font-size: 10px; }
+.gp-diversity__note { font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--color-text-dim); margin-top: 6px; line-height: 1.7; }

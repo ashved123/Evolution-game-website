@@ -1,0 +1,86 @@
+.goo {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(20, 10, 5, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: goo-in 0.4s ease;
+}
+
+@keyframes goo-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.goo__box {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  background: var(--color-panel-dark);
+  border: 2px solid var(--color-border);
+  box-shadow: 6px 6px 0 rgba(80, 50, 20, 0.4);
+  padding: 28px 32px 28px 24px;
+  max-width: 560px;
+  width: 90%;
+  animation: goo-box-in 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+
+@keyframes goo-box-in {
+  from { transform: translateY(20px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
+}
+
+.goo__narrator-wrap {
+  flex-shrink: 0;
+}
+
+.goo__narrator {
+  width: 80px;
+  image-rendering: pixelated;
+}
+
+.goo__content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.goo__title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  color: var(--color-accent);
+  letter-spacing: 1px;
+}
+
+.goo__year {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-text-dim);
+}
+
+.goo__reason {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--color-text);
+  line-height: 1.9;
+}
+
+.goo__stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.goo__score {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--color-text-dim);
+}
+
+.goo__btn {
+  margin-top: 6px;
+  align-self: flex-start;
+}

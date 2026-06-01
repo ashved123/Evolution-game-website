@@ -73,10 +73,9 @@ export default function OverseerPopup({ message, onDismiss }) {
 
       <div className="overseer-popup__body" onClick={!isDone ? skip : undefined}
         style={{ cursor: !isDone ? 'pointer' : 'default' }}>
-        {(concept || emoji) && (
+        {concept && (
           <div className="overseer-popup__meta">
-            {emoji && <span className="overseer-popup__emoji">{emoji}</span>}
-            {concept && <span className="concept-badge">{concept}</span>}
+            <span className="concept-badge">{concept}</span>
           </div>
         )}
         {title && <div className="overseer-popup__title">{title}</div>}

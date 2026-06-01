@@ -2,13 +2,16 @@ import React, { useRef, useEffect, useCallback, useMemo, useState } from 'react'
 import './IslandCanvas.css'
 import { SPECIES } from '../data/species.js'
 import { applyDNA } from '../data/codons.js'
-import { freshId, sexualOffspring, getSeason } from '../simulation/individuals.js'
+import { freshId, sexualOffspring, asexualOffspring, getSeason, BREEDING_TICKS } from '../simulation/individuals.js'
 import {
   AWARENESS, HUNGER_RATE, HUNGER_GAIN, EAT_DISTANCE,
   MATE_DISTANCE, BREED_COOLDOWN, LIFESPAN, PREY_OF, PREDATORS_OF, effectiveRadius,
   TREE_ADULT_AGE, TREE_SEED_RADIUS_BASE, TREE_SEED_DROP_CHANCE, TREE_MIN_DISTANCE, TREE_BIOME_GERMINATION,
   CARRYING_CAPACITY, FOOD_K_FACTOR, SEASON_K_FACTOR,
   FROG_WATER_BIOMES, FROG_DESICCATION_DRAIN,
+  BEETLE_FOREST_BIOMES, BEETLE_FOREST_DRAIN,
+  FIREFLY_POND_BIOMES, FIREFLY_DESICCATION_DRAIN,
+  FROG_EGG_HATCH_TIME, FROG_TADPOLE_MORPH_AGE, FROG_TADPOLE_DEATH_CHANCE,
 } from '../simulation/agentConfig.js'
 import { ISLAND_SCALE } from '../simulation/worldConfig.js'
 import IndividualCard from './IndividualCard.jsx'
@@ -40,8 +43,16 @@ import treeSaplingPng    from '../assets/sprites/flora/tree_sapling.png'
 import mangroveAdultPng  from '../assets/sprites/flora/mangrove_wetland.png'
 import mangroveSaplingPng from '../assets/sprites/flora/mangrove_sapling.png'
 import mushroomPng       from '../assets/sprites/flora/mushroom.png'
+import fireflyPng        from '../assets/sprites/juvenile/firefly.png'
+import frogTadpolePng    from '../assets/sprites/juvenile/frog_tadpole.png'
+import frogEggPng        from '../assets/sprites/juvenile/frog_egg.png'
 
 // ── constants ────────────────────────────────────────────────────────
+
+// ── Wetland toggle — set to true to re-enable the second island ─────
+// All wetland code and assets are preserved; only rendering and biome
+// detection are gated here so it can be unlocked as a progression feature.
+const WETLAND_ENABLED = false
 
 // Base PNG dimensions (do not change — these are the actual image pixel sizes)
 // ISLAND_SCALE is imported from worldConfig.js — change it there to resize the world.
@@ -49,41 +60,53 @@ const BASE_ISLAND_W = 820
 const BASE_ISLAND_H = 540
 
 // Two separate land masses: main island (left) + wetland island (top-right, smaller, with gap)
-const ISLAND_W   = BASE_ISLAND_W * ISLAND_SCALE
-const ISLAND_H   = BASE_ISLAND_H * ISLAND_SCALE
-const WETLAND_DW = Math.round(ISLAND_W * 0.52)   // wetland draw width  (~52% of island)
-const WETLAND_DH = Math.round(ISLAND_H * 0.52)   // wetland draw height (~52% of island)
-const WETLAND_GAP = -Math.round(WETLAND_DW * 0.99) // pull left to cancel PNG ocean padding
-const WETLAND_X  = ISLAND_W + WETLAND_GAP         // wetland left edge in world coords
-const WETLAND_Y  = -Math.round(WETLAND_DH * 0.26) // shift up to cancel PNG top padding
-const WORLD_W    = ISLAND_W + WETLAND_GAP + WETLAND_DW
-const WORLD_H    = ISLAND_H
+const ISLAND_W    = BASE_ISLAND_W * ISLAND_SCALE
+const ISLAND_H    = BASE_ISLAND_H * ISLAND_SCALE
+const WETLAND_DW  = Math.round(ISLAND_W * 0.52)
+const WETLAND_DH  = Math.round(ISLAND_H * 0.52)
+const WETLAND_GAP = -Math.round(WETLAND_DW * 0.99)
+const WETLAND_X   = ISLAND_W + WETLAND_GAP
+const WETLAND_Y   = -Math.round(WETLAND_DH * 0.26)
+// When wetland is disabled, world is just the main island
+const WORLD_W     = WETLAND_ENABLED ? ISLAND_W + WETLAND_GAP + WETLAND_DW : ISLAND_W
+const WORLD_H     = ISLAND_H
 
 const MIN_SCALE      = 0.02
 const MAX_SCALE      = 16.0
 const ZOOM_THRESHOLD = 3.0
 const SPRITE_SCALE   = 0.04
-const SPRITE_SCALE_OVERRIDE = { tree: 0.12, grass: 0.05, monitor: 0.055, boar: 0.045 }
+const SPRITE_SCALE_OVERRIDE = { tree: 0.12, grass: 0.05, monitor: 0.055, boar: 0.045, frog_egg: 0.030, frog_tadpole: 0.032 }
 const MAX_SPEED      = 6      // world units per frame at speed stat = 100
-// IBM time-scale per slider position (matches SPEED_CONFIG in useSimulation.js)
-const SPEED_MULT = [0, 0.3, 1.0, 4.0, 12.0]
+// IBM time-scale per speed value 0–11 (matches SPEED_CONFIG in useSimulation.js)
+const SPEED_MULT = [0, 0.3, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
 
 // Deer herd behaviour
 const HERD_BOND_COUNT    = 2
-const HERD_COHESION_MIN  = 50  * ISLAND_SCALE
-const HERD_COHESION_MAX  = 200 * ISLAND_SCALE
+const HERD_COHESION_MIN  = 130 * ISLAND_SCALE  // attraction only kicks in beyond this distance
+const HERD_COHESION_MAX  = 400 * ISLAND_SCALE  // lose herd interest beyond this
+// Minimum personal space before separation force pushes conspecifics apart.
+// Juveniles use 25% of this, so they naturally cluster near parents.
+const SEPARATION_SPACE   = {
+  deer:    58 * ISLAND_SCALE,
+  boar:    50 * ISLAND_SCALE,
+  frog:    14 * ISLAND_SCALE,  // social near water but shouldn't stack
+  monitor: 42 * ISLAND_SCALE,  // solitary ambush predator — wide personal territory
+}
 
 // Plants don't move — only animals do.
-const STATIONARY_SPECIES = new Set(['grass', 'tree', 'fungi'])
+const STATIONARY_SPECIES = new Set(['grass', 'tree', 'fungi', 'frog_egg'])
 
 // Which biomes each species actively prefers to live in.
 const SPECIES_BIOME_PREF = {
   grass:   ['plains', 'marsh', 'highland'],
   tree:    ['forest', 'dense_veg'],
-  beetle:  ['plains', 'forest', 'highland', 'mountain', 'marsh'],
+  beetle:  ['forest', 'dense_veg'],
   deer:    ['plains', 'forest', 'highland', 'marsh'],
-  frog:    ['pond', 'wetland_water', 'marsh', 'plains'],
-  hawk:    ['highland', 'mountain', 'forest', 'dense_veg'],
+  frog:    ['pond', 'wetland_water'],
+  firefly:      ['pond'],
+  frog_egg:     ['pond'],
+  frog_tadpole: ['pond'],
+  hawk:         ['highland', 'mountain', 'forest', 'dense_veg'],
   fungi:   ['forest', 'dense_veg', 'highland', 'marsh'],
   boar:    ['plains', 'forest', 'highland', 'marsh'],
   monitor: ['marsh', 'wetland_water', 'dense_veg', 'plains'],
@@ -98,7 +121,8 @@ const TREE_BLOCKED = new Set(['ocean', 'deep_ocean', 'outside', 'mountain', 'bea
 const SPECIES_PIXEL_COLOR = {
   grass: '#b5f542', tree: '#1de08a', beetle: '#c46200',
   deer: '#f5d142', frog: '#00e5ff', hawk: '#ff4081', fungi: '#e040fb',
-  boar: '#d4813a', monitor: '#5cad4a',
+  boar: '#d4813a', monitor: '#5cad4a', firefly: '#c8e832',
+  frog_egg: '#ffd0c0', frog_tadpole: '#5a9030',
 }
 
 // Scatter offsets for initial position seeding
@@ -127,6 +151,9 @@ const DOT_RADIUS = {
   fungi:    60 * ISLAND_SCALE,
   boar:     80 * ISLAND_SCALE,
   monitor:  70 * ISLAND_SCALE,
+  firefly:      50 * ISLAND_SCALE,
+  frog_egg:     30 * ISLAND_SCALE,
+  frog_tadpole: 40 * ISLAND_SCALE,
 }
 
 const STAT_KEYS = ['speed', 'resilience', 'metabolism', 'camouflage', 'heatTolerance', 'strength']
@@ -134,12 +161,12 @@ const STAT_KEYS = ['speed', 'resilience', 'metabolism', 'camouflage', 'heatToler
 // ── biome color tables ───────────────────────────────────────────────
 
 const ISLAND_BIOME_PALETTE = [
-  { id: 'ocean',    rgb: [109, 220, 240] },
+  { id: 'ocean',    rgb: [20,  120, 180] },
   { id: 'forest',   rgb: [0,   100,   0] },
   { id: 'plains',   rgb: [100, 200,  60] },
   { id: 'highland', rgb: [80,  130,  50] },
   { id: 'mountain', rgb: [100, 100, 100] },
-  { id: 'pond',     rgb: [0,   150, 200] },
+  { id: 'pond',     rgb: [0,   190, 220] },
   { id: 'beach',    rgb: [240, 200, 120] },
   { id: 'outside',  rgb: [0,     0,   0] },
 ]
@@ -173,8 +200,9 @@ function buildBiomeAt(islandData, islandW, islandH, wetlandData, wetlandW, wetla
   }
 
   return function biomeAt(wx, wy) {
-    // Wetland inset takes priority (top-right corner)
-    if (wx >= WETLAND_X && wx < WETLAND_X + WETLAND_DW &&
+    // Wetland inset (only active when WETLAND_ENABLED)
+    if (WETLAND_ENABLED &&
+        wx >= WETLAND_X && wx < WETLAND_X + WETLAND_DW &&
         wy >= WETLAND_Y && wy < WETLAND_Y + WETLAND_DH) {
       const px = (wx - WETLAND_X) / WETLAND_DW * wetlandW
       const py = (wy - WETLAND_Y) / WETLAND_DH * wetlandH
@@ -201,7 +229,7 @@ function drawMaps(ctx) {
   ctx.imageSmoothingEnabled = true
   if (islandVisualImg.complete && islandVisualImg.naturalWidth)
     ctx.drawImage(islandVisualImg, 0, 0, ISLAND_W, ISLAND_H)
-  if (wetlandVisualImg.complete && wetlandVisualImg.naturalWidth)
+  if (WETLAND_ENABLED && wetlandVisualImg.complete && wetlandVisualImg.naturalWidth)
     ctx.drawImage(wetlandVisualImg, WETLAND_X, WETLAND_Y, WETLAND_DW, WETLAND_DH)
 }
 
@@ -224,13 +252,17 @@ const SPRITES = {
   hawk:    { adult: makeImg(hawkAdultPng),    juv: makeImg(hawkJuvPng)     },
   boar:    { adult: makeImg(boarAdultPng),    juv: makeImg(boarJuvPng)     },
   monitor: { adult: makeImg(monitorAdultPng), juv: makeImg(monitorJuvPng)  },
+  firefly:      { adult: makeImg(fireflyPng)     },
+  frog_egg:     { adult: makeImg(frogEggPng)     },
+  frog_tadpole: { adult: makeImg(frogTadpolePng) },
 }
 
 function getSpriteImg(pos) {
   const sp = SPRITES[pos.spId]
   if (!sp) return null
   if (pos.spId === 'tree') {
-    const inWetland = pos.x >= WETLAND_X && pos.x < WETLAND_X + WETLAND_DW &&
+    const inWetland = WETLAND_ENABLED &&
+                      pos.x >= WETLAND_X && pos.x < WETLAND_X + WETLAND_DW &&
                       pos.y >= WETLAND_Y && pos.y < WETLAND_Y + WETLAND_DH
     const isAdult   = (pos.age ?? 0) >= TREE_ADULT_AGE
     if (inWetland) return isAdult ? sp.mangrove : sp.mangroveJuv
@@ -269,9 +301,10 @@ const HOTSPOTS = [
   { id: 'hawk',    emoji: '🦅', label: 'Island Hawk',    x: (365 / BASE_ISLAND_W) * _IX, y: 110 / BASE_ISLAND_H, color: '#ff7043' },
   { id: 'fungi',   emoji: '🍄', label: 'Shelf Fungi',    x: (200 / BASE_ISLAND_W) * _IX, y: 300 / BASE_ISLAND_H, color: '#ce93d8' },
   { id: 'boar',    emoji: '🐗', label: 'Wild Boar',      x: (500 / BASE_ISLAND_W) * _IX, y: 350 / BASE_ISLAND_H, color: '#d4813a' },
-  // Wetland species — positioned within the separate wetland island
-  { id: 'frog',    emoji: '🐸', label: 'Marsh Frog',     x: (WETLAND_X + WETLAND_DW * 0.45) / WORLD_W, y: (WETLAND_DH * 0.55) / WORLD_H, color: '#66bb6a' },
-  { id: 'monitor', emoji: '🦎', label: 'Monitor Lizard', x: (WETLAND_X + WETLAND_DW * 0.65) / WORLD_W, y: (WETLAND_DH * 0.25) / WORLD_H, color: '#5cad4a' },
+  // Wetland species — relocated to main island while WETLAND_ENABLED = false
+  { id: 'frog',    emoji: '🐸', label: 'Marsh Frog',     x: (360 / BASE_ISLAND_W) * _IX, y: 320 / BASE_ISLAND_H, color: '#66bb6a' },
+  { id: 'firefly', emoji: '✨', label: 'Pond Firefly',   x: (355 / BASE_ISLAND_W) * _IX, y: 310 / BASE_ISLAND_H, color: '#c8e832' },
+  { id: 'monitor', emoji: '🦎', label: 'Monitor Lizard', x: (550 / BASE_ISLAND_W) * _IX, y: 180 / BASE_ISLAND_H, color: '#5cad4a' },
 ]
 
 // ── geometry helpers ─────────────────────────────────────────────────
@@ -326,7 +359,7 @@ function sampleBestDirection(pos, posMap, bySpecies, biomeAt, spId, base, prefs,
     const biome = biomeAt ? biomeAt(tx, ty) : 'plains'
     if (DEEPLY_IMPASSABLE.has(biome)) {
       score -= 500
-    } else if (spId !== 'frog' && (biome === 'pond' || biome === 'wetland_water')) {
+    } else if (spId !== 'frog' && spId !== 'frog_tadpole' && (biome === 'pond' || biome === 'wetland_water')) {
       score -= 250
     } else if (prefs.includes(biome)) {
       score += 60
@@ -381,7 +414,7 @@ function sampleBestDirection(pos, posMap, bySpecies, biomeAt, spId, base, prefs,
 
 // ── IBM agent loop ────────────────────────────────────────────────────
 
-function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMultiplier, currentTick) {
+function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMultiplier, currentTick, diversityRef, deathLogRef) {
   if (speedMultiplier === 0) return
 
   const scores = biomeScoresRef?.current ?? null
@@ -395,16 +428,35 @@ function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMulti
 
   // Compute dynamic effective K once per frame — food availability × season
   const seasonMult = SEASON_K_FACTOR[getSeason(currentTick).name] ?? 1
+  const numTrees   = bySpecies['tree']?.length ?? 0
+  const numBoar    = bySpecies['boar']?.length ?? 0
+
   const effectiveKMap = {}
   for (const spId of Object.keys(CARRYING_CAPACITY)) {
     const base = CARRYING_CAPACITY[spId]
     const cfg  = FOOD_K_FACTOR[spId]
     let foodRatio = 1
     if (cfg) {
-      const foodCount = cfg.food.reduce((sum, p) => sum + (bySpecies[p]?.length ?? 0), 0)
+      let foodCount = cfg.food.reduce((sum, p) => sum + (bySpecies[p]?.length ?? 0), 0)
+      // Deer and boar compete for grass: each boar consumes ~0.4 units of deer-accessible grass
+      if (spId === 'deer') foodCount = Math.max(0, foodCount - numBoar * 0.4)
       foodRatio = Math.min(1.5, Math.max(0.15, foodCount / cfg.optimal))
     }
     effectiveKMap[spId] = Math.max(1, Math.round(base * foodRatio * seasonMult))
+  }
+
+  // Beetles: hard cap at trees × BEETLES_PER_TREE (each tree supports a limited colony)
+  const BEETLES_PER_TREE = 4
+  effectiveKMap['beetle'] = Math.max(1, Math.min(
+    effectiveKMap['beetle'] ?? CARRYING_CAPACITY['beetle'],
+    numTrees * BEETLES_PER_TREE
+  ))
+
+  // Precompute how many beetles share each home tree (O(n) once, O(1) per beetle)
+  const beetlesPerTree = {}
+  for (const [, e] of posMap) {
+    if (e.spId === 'beetle' && e.homeTreeId)
+      beetlesPerTree[e.homeTreeId] = (beetlesPerTree[e.homeTreeId] ?? 0) + 1
   }
 
   const toAdd    = []
@@ -436,11 +488,40 @@ function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMulti
         pos.cooldowns[ck] = Math.max(0, pos.cooldowns[ck] - speedMultiplier)
       }
     }
+    // Abandon courting when starving — survival comes first
+    if (pos.mateTargetId && pos.hunger < 40) pos.mateTargetId = null
+
+    // ── 1b. Firefly: spawn one child then die every tick ─────────────
+    // Runs before the death check so speed multiplier never skips the spawn.
+    if (spId === 'firefly') {
+      const ffPop = bySpecies['firefly']?.length ?? 0
+      if (ffPop + (pendingOffspring['firefly'] ?? 0) < (effectiveKMap['firefly'] ?? 80)) {
+        const child = asexualOffspring({ variation: pos.variation ?? {} })
+        const childCarriers = new Set()
+        for (const mutId of (pos.carriers ?? [])) { if (Math.random() < 0.5) childCarriers.add(mutId) }
+        toAdd.push({ id: child.id, entry: {
+          x: pos.x + (Math.random() - 0.5) * 6 * ISLAND_SCALE,
+          y: pos.y + (Math.random() - 0.5) * 6 * ISLAND_SCALE,
+          vx: 0, vy: 0, spId: 'firefly',
+          gender: null, variation: child.variation, carriers: childCarriers,
+          state: 'wander', targetId: null,
+          hunger: 100, age: 0, cooldowns: {},
+        }})
+        pendingOffspring['firefly'] = (pendingOffspring['firefly'] ?? 0) + 1
+      }
+      toRemove.push({ id, spId, cause: 'age' })
+      continue
+    }
 
     // ── 2. Death check — lifespan scaled by constitution ────────────
     const lifespan = (LIFESPAN[spId] ?? 72000) * (0.5 + effConstitution / 100)
-    if (pos.hunger <= 0 || pos.age >= lifespan) {
-      toRemove.push(id)
+    // Inbreeding depression: low genetic diversity raises random death chance.
+    // diversityIndex 0 = fully inbred (up to +60% death risk), 100 = diverse (no penalty).
+    const divIndex   = diversityRef?.current?.[spId] ?? 100
+    const inbreedRisk = Math.max(0, (1 - divIndex / 100)) * 0.0006 * speedMultiplier
+    if (pos.hunger <= 0 || pos.age >= lifespan || Math.random() < inbreedRisk) {
+      const cause = pos.hunger <= 0 ? 'starvation' : pos.age >= lifespan ? 'age' : 'inbreeding'
+      toRemove.push({ id, spId, cause })
       continue
     }
 
@@ -452,7 +533,7 @@ function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMulti
     // ── 3. Biome check ───────────────────────────────────────────────
     const biome     = biomeAt ? biomeAt(pos.x, pos.y) : 'plains'
     const inWater   = DEEPLY_IMPASSABLE.has(biome) ||
-      (spId !== 'frog' && (biome === 'pond' || biome === 'wetland_water'))
+      (spId !== 'frog' && spId !== 'frog_tadpole' && (biome === 'pond' || biome === 'wetland_water'))
     const inPref    = !inWater && prefs.includes(biome)
     if (scores) {
       if (!scores[spId]) scores[spId] = {}
@@ -463,45 +544,390 @@ function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMulti
     if (spId === 'frog' && !FROG_WATER_BIOMES.has(biome)) {
       pos.hunger -= FROG_DESICCATION_DRAIN * speedMultiplier
     }
+    // Beetles starve outside forest canopy — their entire lifecycle depends on tree fruit
+    if (spId === 'beetle' && !BEETLE_FOREST_BIOMES.has(biome)) {
+      pos.hunger -= BEETLE_FOREST_DRAIN * speedMultiplier
+    }
+    // Fireflies desiccate rapidly when away from pond biomes
+    if (spId === 'firefly' && !FIREFLY_POND_BIOMES.has(biome)) {
+      pos.hunger -= FIREFLY_DESICCATION_DRAIN * speedMultiplier
+    }
+    // Tadpoles die quickly if they leave the pond
+    if (spId === 'frog_tadpole' && !FROG_WATER_BIOMES.has(biome)) {
+      pos.hunger -= FROG_DESICCATION_DRAIN * 3 * speedMultiplier
+    }
 
-    // ── 4. Desirability sampling → choose best direction ────────────
+    // ── 3c. Tadpole lifecycle — random death + metamorphosis ─────────
+    if (spId === 'frog_tadpole') {
+      // Most tadpoles die before metamorphosing
+      if (Math.random() < FROG_TADPOLE_DEATH_CHANCE * speedMultiplier) {
+        toRemove.push({ id, spId, cause: 'age' })
+        continue
+      }
+      // Metamorphose into adult frog
+      if (pos.age >= FROG_TADPOLE_MORPH_AGE) {
+        toRemove.push({ id, spId, cause: 'age' })
+        toAdd.push({ id: freshId(), entry: {
+          x: pos.x, y: pos.y, vx: 0, vy: 0, spId: 'frog',
+          gender: pos.gender ?? (Math.random() < 0.5 ? 'M' : 'F'),
+          variation: pos.variation ?? {},
+          carriers: pos.carriers ?? new Set(),
+          state: 'wander', targetId: null, mateTargetId: null,
+          hunger: 70, age: 0, cooldowns: { breed: 0 },
+        }})
+        pendingOffspring['frog'] = (pendingOffspring['frog'] ?? 0) + 1
+        continue
+      }
+      // Lazy wiggle in the pond — no hunting or fleeing
+      if (!pos.orbitPhase) pos.orbitPhase = Math.random() * Math.PI * 2
+      pos.orbitPhase += (0.04 + Math.random() * 0.04) * speedMultiplier
+      const drift = (0.3 + effSpeed / 200) * speedMultiplier
+      pos.vx = (pos.vx + Math.cos(pos.orbitPhase) * drift) * 0.82
+      pos.vy = (pos.vy + Math.sin(pos.orbitPhase) * drift) * 0.82
+      pos.x  = Math.max(0, Math.min(WORLD_W, pos.x + pos.vx))
+      pos.y  = Math.max(0, Math.min(WORLD_H, pos.y + pos.vy))
+      continue  // skip standard IBM
+    }
+
+    // Beetles: overcrowding on home tree drains hunger — too many larvae on one tree
+    if (spId === 'beetle' && pos.homeTreeId) {
+      const share = beetlesPerTree[pos.homeTreeId] ?? 0
+      if (share > BEETLES_PER_TREE) {
+        const pressure = Math.min(1, (share - BEETLES_PER_TREE) / BEETLES_PER_TREE)
+        pos.hunger -= 0.018 * pressure * speedMultiplier
+      }
+    }
+
+    // ── 3b. Hawk soaring — overrides standard IBM movement ──────────
+    // Hawks orbit their nest tree when wandering, dive at prey when locked.
+    // They use full deer-style mateTargetId courtship during early-spring only,
+    // and chicks hatch at the nest tree.
+    if (spId === 'hawk') {
+      const effReasoning = Math.min(100, Math.max(0, (base.reasoning ?? 30) + (pos.variation?.reasoning ?? 0)))
+      const awarenessR   = effectiveRadius(AWARENESS['hawk']?.radius ?? 300, effSpeed)
+
+      // ── Nest tree management ─────────────────────────────────────
+      const trees = bySpecies['tree'] ?? []
+      if (pos.homeTreeId && !posMap.has(pos.homeTreeId)) pos.homeTreeId = null
+      if (!pos.homeTreeId && trees.length > 0) {
+        const preferred = trees.filter(([, te]) => {
+          const tb = biomeAt ? biomeAt(te.x, te.y) : 'forest'
+          return tb === 'highland' || tb === 'mountain' || tb === 'forest'
+        })
+        const pool = preferred.length > 0 ? preferred : trees
+        let best = null, bestD2 = Infinity
+        for (const [tid, te] of pool) {
+          const d2 = (te.x - pos.x) ** 2 + (te.y - pos.y) ** 2
+          if (d2 < bestD2) { bestD2 = d2; best = tid }
+        }
+        pos.homeTreeId = best
+      }
+      const nestTree = pos.homeTreeId ? posMap.get(pos.homeTreeId) : null
+      const nestX = nestTree ? nestTree.x : homeX
+      const nestY = nestTree ? nestTree.y : homeY
+
+      // Drop stale target
+      if (pos.targetId && !posMap.has(pos.targetId)) pos.targetId = null
+
+      // Acquire target
+      if (!pos.targetId && pos.hunger < 85) {
+        const candidates = []
+        for (const preySpId of (PREY_OF['hawk'] ?? [])) {
+          for (const [pid, pe] of (bySpecies[preySpId] ?? [])) {
+            const d = Math.sqrt((pe.x - pos.x) ** 2 + (pe.y - pos.y) ** 2)
+            if (d < awarenessR) candidates.push({ pid, d, gain: HUNGER_GAIN[preySpId] ?? 35 })
+          }
+        }
+        if (candidates.length > 0) {
+          candidates.sort((a, b) => (b.gain / b.d) - (a.gain / a.d))
+          pos.targetId = candidates[0].pid
+        }
+      }
+
+      let hax = 0, hay = 0
+      if (pos.targetId) {
+        // Dive: beeline at 2× speed, no noise
+        const target = posMap.get(pos.targetId)
+        if (target) {
+          pos.state = 'hunt'
+          const angle = Math.atan2(target.y - pos.y, target.x - pos.x)
+          const diveSpeed = maxSpd * 2.2
+          hax = Math.cos(angle) * diveSpeed * 0.4
+          hay = Math.sin(angle) * diveSpeed * 0.4
+        } else {
+          pos.targetId = null
+        }
+      } else {
+        // Soar: wide clockwise ellipse around nest tree
+        pos.state = 'wander'
+        if (!pos.orbitPhase) pos.orbitPhase = Math.random() * Math.PI * 2
+        pos.orbitPhase += 0.012 * speedMultiplier
+        const orbitR = 220 * ISLAND_SCALE
+        const tx = nestX + Math.cos(pos.orbitPhase) * orbitR
+        const ty = nestY + Math.sin(pos.orbitPhase) * orbitR * 0.55
+        const angle = Math.atan2(ty - pos.y, tx - pos.x)
+        hax = Math.cos(angle) * (2 + effSpeed / 30)
+        hay = Math.sin(angle) * (2 + effSpeed / 30)
+      }
+
+      // Eat check — only on locked target
+      if (pos.targetId) {
+        const target = posMap.get(pos.targetId)
+        if (target) {
+          const d = Math.sqrt((target.x - pos.x) ** 2 + (target.y - pos.y) ** 2)
+          if (d < EAT_DISTANCE * 2) {
+            pos.hunger = Math.min(100, pos.hunger + (HUNGER_GAIN[target.spId] ?? 35))
+            toRemove.push({ id: pos.targetId, spId: target.spId, cause: 'predation' })
+            pos.targetId = null
+          }
+        }
+      }
+
+      pos.vx = (pos.vx + hax) * 0.88
+      pos.vy = (pos.vy + hay) * 0.88
+      const hspd = Math.sqrt(pos.vx ** 2 + pos.vy ** 2)
+      const hmaxSpd = pos.state === 'hunt' ? maxSpd * 2.2 : maxSpd
+      if (hspd > hmaxSpd) { pos.vx = pos.vx / hspd * hmaxSpd; pos.vy = pos.vy / hspd * hmaxSpd }
+      pos.x = Math.max(0, Math.min(WORLD_W, pos.x + pos.vx * speedMultiplier))
+      pos.y = Math.max(0, Math.min(WORLD_H, pos.y + pos.vy * speedMultiplier))
+
+      // ── Courtship — deer-style mateTargetId, early spring only ──
+      const effFertility = Math.min(100, Math.max(0, (base.fertility ?? 50) + (pos.variation?.fertility ?? 0)))
+      if (pos.gender !== null && pop + (pendingOffspring['hawk'] ?? 0) < k &&
+          pos.hunger > 40 && (pos.cooldowns?.breed ?? 0) === 0) {
+        const tickOfYear = ((currentTick % 12) + 12) % 12
+        const inSeason   = BREEDING_TICKS['hawk']?.includes(tickOfYear) ?? true
+
+        if (!inSeason) {
+          if (pos.mateTargetId) pos.mateTargetId = null
+        } else if (pos.mateTargetId) {
+          const mate = posMap.get(pos.mateTargetId)
+          if (!mate || mate.mateTargetId !== id || (mate.cooldowns?.breed ?? 0) > 0) {
+            pos.mateTargetId = null
+          } else {
+            const d = Math.sqrt((mate.x - pos.x) ** 2 + (mate.y - pos.y) ** 2)
+            if (d < MATE_DISTANCE * 3) {
+              const child = sexualOffspring({ variation: pos.variation ?? {} }, { variation: mate.variation ?? {} })
+              const childCarriers = new Set()
+              for (const mutId of new Set([...(pos.carriers ?? []), ...(mate.carriers ?? [])])) {
+                if (Math.random() < 0.5) childCarriers.add(mutId)
+              }
+              const spawnX = nestTree ? nestTree.x + (Math.random() - 0.5) * 10 * ISLAND_SCALE : pos.x
+              const spawnY = nestTree ? nestTree.y + (Math.random() - 0.5) * 10 * ISLAND_SCALE : pos.y
+              toAdd.push({ id: child.id, entry: {
+                x: spawnX, y: spawnY, vx: 0, vy: 0, spId: 'hawk',
+                gender: child.gender, variation: child.variation, carriers: childCarriers,
+                state: 'wander', targetId: null,
+                homeTreeId: null, mateTargetId: null,
+                orbitPhase: Math.random() * Math.PI * 2,
+                hunger: 80, age: 0, cooldowns: { breed: 0 },
+              }})
+              pendingOffspring['hawk'] = (pendingOffspring['hawk'] ?? 0) + 1
+              const cooldown = Math.round(BREED_COOLDOWN * (1.5 - effFertility / 100))
+              pos.cooldowns.breed = cooldown
+              mate.cooldowns.breed = cooldown
+              pos.mateTargetId = null
+              mate.mateTargetId = null
+            }
+          }
+        } else if (pos.gender === 'F') {
+          const males = bySpecies['hawk'] ?? []
+          let chosenId = null, bestDesirability = -1
+          for (const [mid, me] of males) {
+            if (me.gender !== 'M') continue
+            if ((me.cooldowns?.breed ?? 0) > 0) continue
+            if (me.hunger <= 40) continue
+            if (me.mateTargetId) continue
+            const d = Math.sqrt((me.x - pos.x) ** 2 + (me.y - pos.y) ** 2)
+            if (d > awarenessR) continue
+            const mSpeed = Math.min(100, Math.max(0, (base.speed ?? 50) + (me.variation?.speed ?? 0)))
+            const mStr   = Math.min(100, Math.max(0, (base.strength ?? 50) + (me.variation?.strength ?? 0)))
+            const mConst = Math.min(100, Math.max(0, (base.constitution ?? 50) + (me.variation?.constitution ?? 0)))
+            const mResil = Math.min(100, Math.max(0, (base.resilience ?? 50) + (me.variation?.resilience ?? 0)))
+            const desirability = (mSpeed + mStr + mConst + mResil) / 4
+            const threshold = 28 + (effReasoning / 100) * 38
+            if (desirability >= threshold && desirability > bestDesirability) {
+              bestDesirability = desirability
+              chosenId = mid
+            }
+          }
+          if (chosenId !== null) {
+            pos.mateTargetId = chosenId
+            const chosenMale = posMap.get(chosenId)
+            if (chosenMale) chosenMale.mateTargetId = id
+          }
+        }
+      } else if (pos.mateTargetId) {
+        pos.mateTargetId = null
+      }
+
+      continue  // skip the standard IBM block below
+    }
+
+    // ── 4. Reasoning-based target acquisition + direction ───────────
     const effReasoning = Math.min(100, Math.max(0, (base.reasoning ?? 30) + (pos.variation?.reasoning ?? 0)))
-    const bestAngle    = sampleBestDirection(pos, posMap, bySpecies, biomeAt, spId, base, prefs, effReasoning, resolvedBases)
+    const awarenessR   = effectiveRadius(AWARENESS[spId]?.radius ?? 300, effSpeed)
 
-    // Force magnitude: faster animals accelerate harder; urgency scales with hunger
-    const urgency = 1 + (100 - pos.hunger) / 200   // 1.0–1.5× based on hunger
+    // Predator proximity — flee overrides hunt and clears any target
+    const fleeing = (PREDATORS_OF[spId] ?? []).some(predSpId =>
+      (bySpecies[predSpId] ?? []).some(([, pe]) =>
+        Math.sqrt((pe.x - pos.x) ** 2 + (pe.y - pos.y) ** 2) < awarenessR
+      )
+    )
+
+    if (fleeing) {
+      pos.targetId = null
+      pos.state = 'flee'
+    } else {
+      // Drop stale target (prey was eaten by someone else or died)
+      if (pos.targetId && !posMap.has(pos.targetId)) pos.targetId = null
+
+      // Acquire a target when hungry and without one
+      if (!pos.targetId && pos.hunger < 85) {
+        const candidates = []
+        for (const preySpId of (PREY_OF[spId] ?? [])) {
+          for (const [pid, pe] of (bySpecies[preySpId] ?? [])) {
+            const d = Math.sqrt((pe.x - pos.x) ** 2 + (pe.y - pos.y) ** 2)
+            if (d < awarenessR) candidates.push({ pid, d, gain: HUNGER_GAIN[preySpId] ?? 35 })
+          }
+        }
+        if (candidates.length > 0) {
+          if (Math.random() < effReasoning / 100) {
+            // Smart: prefer prey not already targeted by a herd mate (avoid pile-up),
+            // then pick best energy-gain-per-distance ratio.
+            const contested = new Set(
+              (bySpecies[spId] ?? [])
+                .filter(([sid]) => sid !== id)
+                .map(([, sp]) => sp.targetId)
+                .filter(Boolean)
+            )
+            const pool = candidates.filter(c => !contested.has(c.pid))
+            const ranked = (pool.length > 0 ? pool : candidates)
+              .sort((a, b) => (b.gain / b.d) - (a.gain / a.d))
+            pos.targetId = ranked[0].pid
+          } else {
+            // Dumb: random visible prey (may pile onto same target as herd mates)
+            pos.targetId = candidates[Math.floor(Math.random() * candidates.length)].pid
+          }
+        }
+      }
+
+      pos.state = pos.targetId ? 'hunt' : 'wander'
+    }
+
+    // In-water recovery: highest priority — abandon target and beeline to land.
+    // Separation is skipped below so it can't push the animal deeper into water.
+    let bestAngle
+    if (inWater) {
+      pos.targetId    = null
+      pos.mateTargetId = null
+      pos.state        = 'wander'
+      bestAngle        = Math.atan2(homeY - pos.y, homeX - pos.x)
+    } else if (spId === 'frog' && !FROG_WATER_BIOMES.has(biome) && !pos.targetId) {
+      // Frogs idle out of water: return to pond (desiccation handles the rest)
+      pos.mateTargetId = null
+      pos.state        = 'wander'
+      bestAngle        = Math.atan2(homeY - pos.y, homeX - pos.x) + (Math.random() - 0.5) * 0.25
+    } else if (!fleeing && pos.targetId) {
+      // Food hunting takes priority over courting
+      const target = posMap.get(pos.targetId)
+      if (target) {
+        const directAngle = Math.atan2(target.y - pos.y, target.x - pos.x)
+        const noise = (1 - effReasoning / 100) * (Math.random() - 0.5) * Math.PI * 0.7
+        bestAngle = directAngle + noise
+      } else {
+        pos.targetId = null
+        bestAngle = sampleBestDirection(pos, posMap, bySpecies, biomeAt, spId, base, prefs, effReasoning, resolvedBases)
+      }
+    } else if (!fleeing && pos.mateTargetId && pos.hunger > 45) {
+      // Pathfind toward accepted mate — both move toward each other
+      const mate = posMap.get(pos.mateTargetId)
+      if (mate && mate.mateTargetId === id) {
+        const directAngle = Math.atan2(mate.y - pos.y, mate.x - pos.x)
+        const noise = (1 - effReasoning / 100) * (Math.random() - 0.5) * Math.PI * 0.35
+        bestAngle = directAngle + noise
+      } else {
+        pos.mateTargetId = null
+        bestAngle = sampleBestDirection(pos, posMap, bySpecies, biomeAt, spId, base, prefs, effReasoning, resolvedBases)
+      }
+    } else {
+      bestAngle = sampleBestDirection(pos, posMap, bySpecies, biomeAt, spId, base, prefs, effReasoning, resolvedBases)
+    }
+
+    // ── Beetle movement: breed-tree first, then home-tree ─────────────
+    if (spId === 'beetle' && pos.state === 'wander' && !pos.targetId && !inWater) {
+      const trees = bySpecies['tree'] ?? []
+
+      // Drop stale refs
+      if (pos.breedTreeId && !posMap.has(pos.breedTreeId)) pos.breedTreeId = null
+      if (pos.homeTreeId  && !posMap.has(pos.homeTreeId))  pos.homeTreeId  = null
+
+      // Assign home tree if missing
+      if (!pos.homeTreeId) {
+        let nearest = null, nearestD2 = Infinity
+        for (const [tid, te] of trees) {
+          const d2 = (te.x - pos.x) ** 2 + (te.y - pos.y) ** 2
+          if (d2 < nearestD2) { nearestD2 = d2; nearest = tid }
+        }
+        pos.homeTreeId = nearest
+      }
+
+      if (pos.breedTreeId) {
+        // Moving to lay eggs — beeline toward breed tree
+        const bt = posMap.get(pos.breedTreeId)
+        if (bt) {
+          const noise = (1 - effReasoning / 100) * (Math.random() - 0.5) * Math.PI * 0.3
+          bestAngle = Math.atan2(bt.y - pos.y, bt.x - pos.x) + noise
+        }
+      } else if (pos.homeTreeId) {
+        // Return to home tree if far away
+        const ht = posMap.get(pos.homeTreeId)
+        if (ht) {
+          const d = Math.sqrt((ht.x - pos.x) ** 2 + (ht.y - pos.y) ** 2)
+          if (d > 6 * ISLAND_SCALE) {
+            const noise = (1 - effReasoning / 100) * (Math.random() - 0.5) * Math.PI * 0.35
+            bestAngle = Math.atan2(ht.y - pos.y, ht.x - pos.x) + noise
+          }
+        }
+      }
+    }
+
+    // Panic urgency in water so the animal escapes quickly; otherwise scale with hunger
+    const urgency = inWater ? 2.5 : 1 + (100 - pos.hunger) / 200
     const force   = (2 + effSpeed / 25 + effStrength / 50) * urgency
     let ax = Math.cos(bestAngle) * force
     let ay = Math.sin(bestAngle) * force
 
-    // Update display state (used by UI only — does not drive movement)
-    const nearPred = (PREDATORS_OF[spId] ?? []).some(predSpId =>
-      (bySpecies[predSpId] ?? []).some(([, pe]) => {
-        const aw = AWARENESS[spId]
-        const r  = effectiveRadius(aw?.radius ?? 300, effSpeed)
-        return Math.sqrt((pe.x - pos.x) ** 2 + (pe.y - pos.y) ** 2) < r
-      })
-    )
-    const nearPrey = (PREY_OF[spId] ?? []).some(preySpId =>
-      (bySpecies[preySpId] ?? []).some(([, pe]) => {
-        const aw = AWARENESS[spId]
-        const r  = effectiveRadius(aw?.radius ?? 300, effSpeed)
-        return Math.sqrt((pe.x - pos.x) ** 2 + (pe.y - pos.y) ** 2) < r
-      })
-    )
-    pos.state = nearPred ? 'flee' : nearPrey ? 'hunt' : 'wander'
-
-    // ── 5. Eat check — consume any prey within EAT_DISTANCE ─────────
+    // ── 5. Eat check — only when physically at the locked target ────
     let justAte = false
-    for (const preySpId of (PREY_OF[spId] ?? [])) {
-      if (justAte) break
-      for (const [pid, pe] of (bySpecies[preySpId] ?? [])) {
-        const d = Math.sqrt((pe.x - pos.x) ** 2 + (pe.y - pos.y) ** 2)
+    if (pos.targetId) {
+      const target = posMap.get(pos.targetId)
+      if (target) {
+        const d = Math.sqrt((target.x - pos.x) ** 2 + (target.y - pos.y) ** 2)
         if (d < EAT_DISTANCE) {
+          const preySpId = target.spId
           pos.hunger = Math.min(100, pos.hunger + (HUNGER_GAIN[preySpId] ?? 35))
-          toRemove.push(pid)
+          if (preySpId !== 'tree') toRemove.push({ id: pos.targetId, spId: preySpId, cause: 'predation' })
+          pos.targetId = null
           justAte = true
-          break
+        }
+      }
+    }
+
+    // ── 6. Separation — prevents conspecific piling ──────────────────
+    const sepSpace = SEPARATION_SPACE[spId]
+    if (sepSpace && !inWater) {
+      const isJuv  = pos.age < (LIFESPAN[spId] ?? Infinity) * 0.2
+      const mySpace = isJuv ? sepSpace * 0.25 : sepSpace
+      for (const [sid, sp] of (bySpecies[spId] ?? [])) {
+        if (sid === id) continue
+        if (sid === pos.mateTargetId) continue  // don't push away your mate
+        const dx = pos.x - sp.x, dy = pos.y - sp.y
+        const d  = Math.sqrt(dx * dx + dy * dy)
+        if (d < mySpace && d > 0) {
+          const push = (1 - d / mySpace) * 4.0
+          ax += (dx / d) * push
+          ay += (dy / d) * push
         }
       }
     }
@@ -516,47 +942,188 @@ function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMulti
 
     // ── 8. Breeding ──────────────────────────────────────────────────
     const hasGender  = pos.gender !== null
-    // Include births already queued this frame so we don't blow past K in a single tick
     const atCapacity = pop + (pendingOffspring[spId] ?? 0) >= k
-    if (hasGender && !atCapacity && pos.state !== 'flee' && pos.hunger > 40 && (pos.cooldowns?.breed ?? 0) === 0) {
-      const sameSpecies    = bySpecies[spId] ?? []
-      const oppositeGender = pos.gender === 'M' ? 'F' : 'M'
-      for (const [pid, pentry] of sameSpecies) {
-        if (pid === id) continue
-        if (pentry.gender !== oppositeGender) continue
-        if ((pentry.cooldowns?.breed ?? 0) > 0) continue
-        if (pentry.hunger <= 40) continue
-        const d = Math.sqrt((pentry.x - pos.x) ** 2 + (pentry.y - pos.y) ** 2)
-        if (d < MATE_DISTANCE) {
-          const child = sexualOffspring(
-            { variation: pos.variation    ?? {} },
-            { variation: pentry.variation ?? {} },
-          )
-          // Mendelian carrier inheritance: each parent mutation has 50% chance of passing
-          const childCarriers = new Set()
-          for (const mutId of new Set([...(pos.carriers ?? []), ...(pentry.carriers ?? [])])) {
-            if (Math.random() < 0.5) childCarriers.add(mutId)
-          }
-          toAdd.push({
-            id: child.id, entry: {
-              x: pos.x + (Math.random() - 0.5) * 30 * ISLAND_SCALE,
-              y: pos.y + (Math.random() - 0.5) * 30 * ISLAND_SCALE,
-              vx: 0, vy: 0,
-              spId, gender: child.gender, variation: child.variation,
-              carriers: childCarriers,
-              state: 'wander', targetId: null,
-              hunger: 80, age: 0, cooldowns: { breed: 0 },
+
+    // ── Beetle egg-laying: find a new tree, travel to it, hatch there ──
+    if (spId === 'beetle' && !atCapacity && pos.hunger > 55 && (pos.cooldowns?.breed ?? 0) === 0) {
+      const trees = bySpecies['tree'] ?? []
+      // Acquire a new breed-tree (prefer one different from home)
+      if (!pos.breedTreeId && trees.length > 0) {
+        const candidates = trees.filter(([tid]) => tid !== pos.homeTreeId)
+        const pool = candidates.length > 0 ? candidates : trees
+        // Pick the nearest candidate within awareness range
+        let best = null, bestD2 = awarenessR ** 2
+        for (const [tid, te] of pool) {
+          const d2 = (te.x - pos.x) ** 2 + (te.y - pos.y) ** 2
+          if (d2 < bestD2) { bestD2 = d2; best = tid }
+        }
+        pos.breedTreeId = best
+      }
+      // Arrived at breed tree — lay eggs
+      if (pos.breedTreeId) {
+        const bt = posMap.get(pos.breedTreeId)
+        if (bt) {
+          const d = Math.sqrt((bt.x - pos.x) ** 2 + (bt.y - pos.y) ** 2)
+          if (d < EAT_DISTANCE * 1.5) {
+            const eggCount = 2 + Math.floor(Math.random() * 3)  // 2–4 eggs
+            for (let e = 0; e < eggCount; e++) {
+              const child = asexualOffspring({ variation: pos.variation ?? {} })
+              const childCarriers = new Set()
+              for (const mutId of (pos.carriers ?? [])) {
+                if (Math.random() < 0.5) childCarriers.add(mutId)
+              }
+              toAdd.push({
+                id: child.id, entry: {
+                  x: bt.x + (Math.random() - 0.5) * 3 * ISLAND_SCALE,
+                  y: bt.y + (Math.random() - 0.5) * 3 * ISLAND_SCALE,
+                  vx: 0, vy: 0, spId: 'beetle',
+                  gender: Math.random() < 0.5 ? 'M' : 'F',
+                  variation: child.variation,
+                  carriers: childCarriers,
+                  state: 'wander', targetId: null,
+                  homeTreeId: pos.breedTreeId,
+                  breedTreeId: null,
+                  hunger: 90, age: 0, cooldowns: { breed: 0 },
+                },
+              })
             }
-          })
-          pendingOffspring[spId] = (pendingOffspring[spId] ?? 0) + 1
-          // Fertility scales breed cooldown: high fertility = shorter wait (0.5×–1.5×)
-          const cooldown = Math.round(BREED_COOLDOWN * (1.5 - effFertility / 100))
-          pos.cooldowns.breed    = cooldown
-          pentry.cooldowns.breed = cooldown
-          break
+            pendingOffspring['beetle'] = (pendingOffspring['beetle'] ?? 0) + eggCount
+            const cooldown = Math.round(BREED_COOLDOWN * (1.5 - effFertility / 100))
+            pos.cooldowns.breed = cooldown
+            pos.breedTreeId = null
+          }
+        } else {
+          pos.breedTreeId = null  // tree was eaten while travelling
         }
       }
     }
+
+    if (hasGender && spId !== 'beetle' && !atCapacity && !fleeing && pos.hunger > 40 && (pos.cooldowns?.breed ?? 0) === 0) {
+      const tickOfYear = ((currentTick % 12) + 12) % 12
+      const inSeason   = BREEDING_TICKS[spId]?.includes(tickOfYear) ?? true
+
+      if (!inSeason) {
+        // Out of season — abandon any pending courtship
+        if (pos.mateTargetId) pos.mateTargetId = null
+      } else if (pos.mateTargetId) {
+        // ── Already courting: check if they've met ────────────────────
+        const mate = posMap.get(pos.mateTargetId)
+        if (!mate || mate.mateTargetId !== id || (mate.cooldowns?.breed ?? 0) > 0) {
+          pos.mateTargetId = null  // stale — mate moved on or bred with someone else
+        } else {
+          // Frogs must both be in water to complete mating
+          if (spId === 'frog') {
+            const mateBiome = biomeAt ? biomeAt(mate.x, mate.y) : 'plains'
+            if (!FROG_WATER_BIOMES.has(biome) || !FROG_WATER_BIOMES.has(mateBiome)) {
+              // keep approaching, just can't breed yet
+            } else {
+              const d = Math.sqrt((mate.x - pos.x) ** 2 + (mate.y - pos.y) ** 2)
+              if (d < MATE_DISTANCE) {
+                // Lay a clutch of eggs — each hatches into a tadpole with high death rate
+                const eggCount = 5 + Math.floor(Math.random() * 4)  // 5–8 eggs
+                for (let e = 0; e < eggCount; e++) {
+                  const child = sexualOffspring({ variation: pos.variation ?? {} }, { variation: mate.variation ?? {} })
+                  const childCarriers = new Set()
+                  for (const mutId of new Set([...(pos.carriers ?? []), ...(mate.carriers ?? [])])) {
+                    if (Math.random() < 0.5) childCarriers.add(mutId)
+                  }
+                  toAdd.push({ id: child.id, entry: {
+                    x: pos.x + (Math.random() - 0.5) * 5 * ISLAND_SCALE,
+                    y: pos.y + (Math.random() - 0.5) * 5 * ISLAND_SCALE,
+                    vx: 0, vy: 0, spId: 'frog_egg',
+                    gender: child.gender, variation: child.variation, carriers: childCarriers,
+                    state: 'wander', targetId: null, eggTimer: FROG_EGG_HATCH_TIME,
+                    hunger: 100, age: 0, cooldowns: {},
+                  }})
+                }
+                pendingOffspring['frog_egg'] = (pendingOffspring['frog_egg'] ?? 0) + eggCount
+                const cooldown = Math.round(BREED_COOLDOWN * (1.5 - effFertility / 100))
+                pos.cooldowns.breed = cooldown
+                mate.cooldowns.breed = cooldown
+                pos.mateTargetId = null
+                mate.mateTargetId = null
+              }
+            }
+          } else {
+            const d = Math.sqrt((mate.x - pos.x) ** 2 + (mate.y - pos.y) ** 2)
+            if (d < MATE_DISTANCE) {
+              const child = sexualOffspring({ variation: pos.variation ?? {} }, { variation: mate.variation ?? {} })
+              const childCarriers = new Set()
+              for (const mutId of new Set([...(pos.carriers ?? []), ...(mate.carriers ?? [])])) {
+                if (Math.random() < 0.5) childCarriers.add(mutId)
+              }
+              toAdd.push({ id: child.id, entry: {
+                x: pos.x + (Math.random() - 0.5) * 30 * ISLAND_SCALE,
+                y: pos.y + (Math.random() - 0.5) * 30 * ISLAND_SCALE,
+                vx: 0, vy: 0, spId, gender: child.gender, variation: child.variation,
+                carriers: childCarriers, state: 'wander', targetId: null,
+                hunger: 80, age: 0, cooldowns: { breed: 0 },
+              }})
+              pendingOffspring[spId] = (pendingOffspring[spId] ?? 0) + 1
+              const cooldown = Math.round(BREED_COOLDOWN * (1.5 - effFertility / 100))
+              pos.cooldowns.breed = cooldown
+              mate.cooldowns.breed = cooldown
+              pos.mateTargetId = null
+              mate.mateTargetId = null
+            }
+          }
+        }
+      } else if (pos.gender === 'F') {
+        // ── Female evaluates available males in awareness range ────────
+        const males = bySpecies[spId] ?? []
+        let chosenId = null, bestDesirability = -1
+
+        for (const [mid, me] of males) {
+          if (me.gender !== 'M') continue
+          if ((me.cooldowns?.breed ?? 0) > 0) continue
+          if (me.hunger <= 40) continue
+          if (me.mateTargetId) continue  // already courting someone else
+
+          const d = Math.sqrt((me.x - pos.x) ** 2 + (me.y - pos.y) ** 2)
+          if (d > awarenessR) continue  // out of sight
+
+          // Male desirability: honest signals of genetic fitness
+          const mSpeed  = Math.min(100, Math.max(0, (base.speed        ?? 50) + (me.variation?.speed        ?? 0)))
+          const mStr    = Math.min(100, Math.max(0, (base.strength     ?? 50) + (me.variation?.strength     ?? 0)))
+          const mConst  = Math.min(100, Math.max(0, (base.constitution ?? 50) + (me.variation?.constitution ?? 0)))
+          const mResil  = Math.min(100, Math.max(0, (base.resilience   ?? 50) + (me.variation?.resilience   ?? 0)))
+          const desirability = (mSpeed + mStr + mConst + mResil) / 4
+
+          // Female threshold: higher reasoning = pickier mate choice
+          const threshold = 28 + (effReasoning / 100) * 38  // 28–66 range
+
+          if (desirability >= threshold && desirability > bestDesirability) {
+            bestDesirability = desirability
+            chosenId = mid
+          }
+        }
+
+        if (chosenId !== null) {
+          pos.mateTargetId = chosenId
+          const chosenMale = posMap.get(chosenId)
+          if (chosenMale) chosenMale.mateTargetId = id
+        }
+      }
+    }
+  }
+
+  // ── Frog egg hatch ───────────────────────────────────────────────────
+  for (const [eid, epos] of posMap) {
+    if (epos.spId !== 'frog_egg') continue
+    epos.age = (epos.age ?? 0) + speedMultiplier
+    epos.eggTimer = (epos.eggTimer ?? 0) - speedMultiplier
+    if (epos.eggTimer > 0) continue
+    // Hatch: spawn one tadpole per egg, then remove the egg
+    toAdd.push({ id: freshId(), entry: {
+      x: epos.x + (Math.random() - 0.5) * 3 * ISLAND_SCALE,
+      y: epos.y + (Math.random() - 0.5) * 3 * ISLAND_SCALE,
+      vx: 0, vy: 0, spId: 'frog_tadpole',
+      gender: epos.gender, variation: epos.variation ?? {},
+      carriers: epos.carriers ?? new Set(),
+      state: 'wander', targetId: null, orbitPhase: Math.random() * Math.PI * 2,
+      hunger: 100, age: 0, cooldowns: {},
+    }})
+    toRemove.push({ id: eid, spId: 'frog_egg', cause: 'age' })
   }
 
   // ── Stationary plants: age increment + tree seed dispersal ──────────
@@ -567,11 +1134,14 @@ function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMulti
 
     if (pos.spId !== 'tree' || pos.age < TREE_ADULT_AGE) continue
 
-    const base   = resolvedBases['tree'] ?? {}
-    const effMet = Math.min(100, Math.max(0, (base.metabolism ?? 38) + (pos.variation?.metabolism ?? 0)))
-    const effStr = Math.min(100, Math.max(0, (base.strength   ?? 12) + (pos.variation?.strength   ?? 0)))
+    const base    = resolvedBases['tree'] ?? {}
+    const effFert = Math.min(100, Math.max(0, (base.fertility  ?? 15) + (pos.variation?.fertility  ?? 0)))
+    const effMet  = Math.min(100, Math.max(0, (base.metabolism ?? 38) + (pos.variation?.metabolism ?? 0)))
+    const effStr  = Math.min(100, Math.max(0, (base.strength   ?? 12) + (pos.variation?.strength   ?? 0)))
 
-    const dropChance = TREE_SEED_DROP_CHANCE * (0.5 + effMet / 200) * speedMultiplier
+    if (effFert <= 0) continue  // cannot seed without fertility
+
+    const dropChance = TREE_SEED_DROP_CHANCE * (0.5 + effMet / 200) * (effFert / 100) * speedMultiplier
     if (Math.random() > dropChance) continue
 
     const seedRadius = TREE_SEED_RADIUS_BASE * (0.5 + effStr / 200)
@@ -602,8 +1172,22 @@ function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMulti
     toAdd.push({ id: freshId(), entry: { x: sx, y: sy, vx: 0, vy: 0, spId: 'tree', variation, age: 0 } })
   }
 
-  for (const rid of toRemove) { if (rid) posMap.delete(rid) }
+  for (const entry of toRemove) {
+    const eid = typeof entry === 'string' ? entry : entry?.id
+    if (eid) posMap.delete(eid)
+  }
   for (const { id: nid, entry } of toAdd) posMap.set(nid, entry)
+
+  // Aggregate deaths by species + cause for the death log
+  if (deathLogRef) {
+    for (const entry of toRemove) {
+      if (!entry || typeof entry === 'string') continue
+      const { spId: dSpId, cause } = entry
+      if (!dSpId || !cause) continue
+      if (!deathLogRef.current[dSpId]) deathLogRef.current[dSpId] = {}
+      deathLogRef.current[dSpId][cause] = (deathLogRef.current[dSpId][cause] ?? 0) + 1
+    }
+  }
 }
 
 // ── drawing ──────────────────────────────────────────────────────────
@@ -674,7 +1258,7 @@ export default function IslandCanvas({
   speed, onSelectSpecies, preset = 'standard', pops = {}, individuals = {},
   dnaOverrides = {}, biomeScoresRef = null, posMapRef = null, popsRef = null, biomeAtRef = null,
   simTickRef = null, highlightMutationId = null, arrivedSpecies = null, spawnMoreTreesRef = null,
-  focusViewportRef = null,
+  focusViewportRef = null, diversityRef = null, deathLogRef = null,
 }) {
   const canvasRef       = useRef(null)
   const spriteCanvasRef = useRef(null)
@@ -900,7 +1484,7 @@ export default function IslandCanvas({
         }
 
         const spMult = SPEED_MULT[speedRef.current] ?? 0
-        stepMovement(posMap, biomeAt ?? (() => 'plains'), resolvedBases, biomeScoresRef, spMult, simTickRef?.current ?? 0)
+        stepMovement(posMap, biomeAt ?? (() => 'plains'), resolvedBases, biomeScoresRef, spMult, simTickRef?.current ?? 0, diversityRef, deathLogRef)
 
         if (popsRef) {
           const counts = {}
@@ -1019,19 +1603,47 @@ export default function IslandCanvas({
 
   function pickIndividual(cssX, cssY) {
     const vp = vpRef.current
-    if (!vp || vp.scale < ZOOM_THRESHOLD) return
+    if (!vp) return
     const wx = (cssX - vp.panX) / vp.scale
     const wy = (cssY - vp.panY) / vp.scale
-    const PICK_RADIUS = 30
     let best = null, bestDist = Infinity
     for (const [id, pos] of positionsRef.current) {
-      if (!pos.spId || STATIONARY_SPECIES.has(pos.spId)) continue
-      const dist = Math.sqrt((wx - pos.x) ** 2 + (wy - pos.y) ** 2)
-      if (dist < PICK_RADIUS && dist < bestDist) { bestDist = dist; best = { speciesId: pos.spId, indId: id, cssX, cssY } }
+      if (!pos.spId) continue
+      // Trees are drawn bottom-anchored; offset pick target to visual centre
+      const pickCx = pos.x
+      const pickCy = STATIONARY_SPECIES.has(pos.spId) ? pos.y - 20 / vp.scale : pos.y
+      // Screen-space pick radius: larger for big stationary sprites
+      const screenR = STATIONARY_SPECIES.has(pos.spId) ? 36 : 22
+      const pickWorld = screenR / vp.scale
+      const dist = Math.sqrt((wx - pickCx) ** 2 + (wy - pickCy) ** 2)
+      if (dist < pickWorld && dist < bestDist) { bestDist = dist; best = { speciesId: pos.spId, indId: id, cssX, cssY } }
     }
     if (best) setSelectedInd(best)
     else setSelectedInd(null)
   }
+
+  // Capture-phase click listener — fires before any child stopPropagation.
+  // Tracks pointer-down position itself so it works even when a hotspot
+  // button stops mousedown propagation.
+  useEffect(() => {
+    const wrap = wrapRef.current
+    if (!wrap) return
+    let downX = 0, downY = 0
+    const onDown = (e) => { if (e.button === 0) { downX = e.clientX; downY = e.clientY } }
+    const onClick = (e) => {
+      if (e.button !== 0) return
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return  // was a drag
+      if (e.target.closest('.island-hotspot')) return  // hotspot buttons open gene editor, not card
+      const rect = wrap.getBoundingClientRect()
+      pickIndividual(e.clientX - rect.left, e.clientY - rect.top)
+    }
+    wrap.addEventListener('pointerdown', onDown,   { capture: true })
+    wrap.addEventListener('click',       onClick,  { capture: true })
+    return () => {
+      wrap.removeEventListener('pointerdown', onDown,   { capture: true })
+      wrap.removeEventListener('click',       onClick,  { capture: true })
+    }
+  }, []) // pickIndividual only uses stable refs + setSelectedInd
 
   function handleMouseDown(e) {
     if (e.button !== 0) return
@@ -1051,10 +1663,6 @@ export default function IslandCanvas({
   }
 
   function stopDrag(e) {
-    if (!dragMoved.current && dragging.current && e) {
-      const rect = wrapRef.current.getBoundingClientRect()
-      pickIndividual(e.clientX - rect.left, e.clientY - rect.top)
-    }
     dragging.current = false
     if (wrapRef.current) wrapRef.current.style.cursor = ''
   }
@@ -1099,7 +1707,8 @@ export default function IslandCanvas({
         const dna   = dnaOverridesRef.current[selectedInd.speciesId] ?? sp?.dna ?? []
         const base  = sp ? applyDNA(sp.stats, dna) : {}
         const entry = positionsRef.current.get(selectedInd.indId)
-        const ind   = entry ? { id: selectedInd.indId, gender: entry.gender, variation: entry.variation ?? {} } : null
+        const ind   = entry ? { id: selectedInd.indId, gender: entry.gender, variation: entry.variation ?? {}, age: entry.age ?? 0, hunger: entry.hunger ?? null, state: entry.state ?? null } : null
+        const { width: cw, height: ch } = sizeRef.current
         return sp && ind ? (
           <IndividualCard
             species={sp}
@@ -1108,6 +1717,8 @@ export default function IslandCanvas({
             idx={0}
             cssX={selectedInd.cssX}
             cssY={selectedInd.cssY}
+            canvasW={cw}
+            canvasH={ch}
             onClose={() => setSelectedInd(null)}
           />
         ) : null

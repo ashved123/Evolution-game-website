@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { SPRITE_ICONS } from '../utils/spriteIcons.js'
 import './AnimalsPanel.css'
 
 const ANIMALS = [
@@ -103,7 +104,7 @@ export default function AnimalsPanel() {
               className="animal-card__row"
               onClick={() => setOpen(isOpen ? null : a.id)}
             >
-              <span className="animal-card__emoji">{a.emoji}</span>
+              <img src={SPRITE_ICONS[a.id]} className="animal-card__emoji" style={{ imageRendering: 'pixelated' }} alt={a.id} />
               <div className="animal-card__info">
                 <span className="animal-card__name">{a.name}</span>
                 <span

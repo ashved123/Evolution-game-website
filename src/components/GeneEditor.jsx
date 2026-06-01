@@ -97,7 +97,7 @@ export default function GeneEditor({ species, dna: dnaProp, onDnaChange, onClose
     <div className="gene-editor">
 
       <div className="gene-editor__header">
-        <span className="gene-editor__species">{species.emoji} {species.name}</span>
+        <span className="gene-editor__species">{species.name}</span>
         <div className="gene-editor__badges">
           <span className="concept-badge">DNA Base Pairs</span>
           <span className="concept-badge">Codons</span>

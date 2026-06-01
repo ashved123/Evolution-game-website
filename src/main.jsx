@@ -6,6 +6,7 @@ import App              from './App.jsx'
 import AuthPage         from './pages/AuthPage.jsx'
 import IslandsPage      from './pages/IslandsPage.jsx'
 import CreateIslandPage from './pages/CreateIslandPage.jsx'
+import TeacherModePage  from './pages/TeacherModePage.jsx'
 import './styles/global.css'
 
 function ProtectedRoute({ children }) {
@@ -31,6 +32,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/islands"        element={<ProtectedRoute><IslandsPage /></ProtectedRoute>} />
           <Route path="/create-island"  element={<ProtectedRoute><CreateIslandPage /></ProtectedRoute>} />
           <Route path="/game/:id"       element={<ProtectedRoute><App /></ProtectedRoute>} />
+          <Route path="/teacher"        element={<TeacherModePage />} />
           <Route path="*"               element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

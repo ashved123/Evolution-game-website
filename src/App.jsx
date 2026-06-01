@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import Header from './components/Header.jsx'
 import IslandCanvas from './components/IslandCanvas.jsx'
 import EcosystemPanel from './components/EcosystemPanel.jsx'
+import PopulationPanel from './components/PopulationPanel.jsx'
 import SpeciesList from './components/SpeciesList.jsx'
 import GeneEditor from './components/GeneEditor.jsx'
 import GeneticsPanel from './components/GeneticsPanel.jsx'
@@ -11,13 +12,35 @@ import FloatingWindow from './components/FloatingWindow.jsx'
 import TutorialWindow from './components/TutorialWindow.jsx'
 import SpotlightOverlay from './components/SpotlightOverlay.jsx'
 import OverseerPopup from './components/OverseerPopup.jsx'
+import GameOverOverlay from './components/GameOverOverlay.jsx'
+import InterventionPanel from './components/InterventionPanel.jsx'
 import { TUTORIAL_STEPS } from './data/tutorialSteps.js'
 import { SPECIES } from './data/species.js'
+import { applyDNA } from './data/codons.js'
+import { K } from './simulation/engine.js'
+import { CARRYING_CAPACITY } from './simulation/agentConfig.js'
 import { useSimulation } from './simulation/useSimulation.js'
 import { getSeason, BREEDING_TICKS } from './simulation/individuals.js'
 import './styles/App.css'
 
-const SPEED_LABELS = ['⏸', '👁 Watch', '1×', '4×', '⏭ Skip']
+const ALL_K = { ...K, ...CARRYING_CAPACITY }
+
+// Per-species health (0/20/60/100), averaged across all arrived species.
+function computeHealthScore(pops, arrivedSpecies) {
+  if (!arrivedSpecies || arrivedSpecies.size === 0) return 100
+  let total = 0
+  for (const spId of arrivedSpecies) {
+    const pop = Math.round(pops[spId] ?? 0)
+    const cap = ALL_K[spId] ?? 100
+    if (pop < 1)            total += 0
+    else if (pop < cap * 0.2) total += 20
+    else if (pop < cap * 0.4) total += 60
+    else                      total += 100
+  }
+  return Math.round(total / arrivedSpecies.size)
+}
+
+// speed 0=Pause, 1=Watch, 2-11=Timewarp 1×-10×
 const SPECIES_EMOJI = { beetle: '🪲', deer: '🦌', frog: '🐸', hawk: '🦅' }
 
 // Anchor resolver: returns { x, y } pixel position for the tutorial window given viewport + window size
@@ -41,11 +64,12 @@ function breedingNow(tick) {
 }
 
 const DEFAULT_WINS = {
-  clock:     { open: false, pos: { x: 20,  y: 60  }, size: { w: 280, h: 148 } },
-  events:    { open: false, pos: { x: 320, y: 60  }, size: { w: 360, h: 460 } },
-  ecosystem: { open: false, pos: { x: 380, y: 80  }, size: { w: 380, h: 440 } },
-  species:   { open: false, pos: { x: 80,  y: 110 }, size: { w: 360, h: 480 } },
-  gene:      { open: false, pos: { x: 60,  y: 70  }, size: { w: 780, h: 500 } },
+  clock:        { open: false, pos: { x: 20,  y: 60  }, size: { w: 300, h: 186 } },
+  events:       { open: false, pos: { x: 320, y: 60  }, size: { w: 360, h: 460 } },
+  ecosystem:    { open: false, pos: { x: 380, y: 80  }, size: { w: 420, h: 560 } },
+  intervention: { open: false, pos: { x: 140, y: 80  }, size: { w: 380, h: 480 } },
+  species:      { open: false, pos: { x: 80,  y: 110 }, size: { w: 360, h: 480 } },
+  gene:         { open: false, pos: { x: 60,  y: 70  }, size: { w: 780, h: 500 } },
 }
 
 export default function App() {
@@ -55,7 +79,7 @@ export default function App() {
   const isNew      = state?.isNew  ?? false
 
   const [wins,    setWins]    = useState(DEFAULT_WINS)
-  const [winOrder, setWinOrder] = useState(['ecosystem', 'events', 'species', 'gene', 'clock', 'tutorial'])
+  const [winOrder, setWinOrder] = useState(['ecosystem', 'events', 'intervention', 'species', 'gene', 'clock', 'tutorial'])
 
   // Tutorial state — auto-opens on new island creation; persisted otherwise
   const [tutOpen,  setTutOpen]  = useState(() => isNew || localStorage.getItem('tutDone') !== '1')
@@ -65,10 +89,15 @@ export default function App() {
   })
   const [tutPos,      setTutPos]      = useState({ x: Math.max(20, Math.round(window.innerWidth  / 2) - 280), y: 60 })
   const [tutSize,     setTutSize]     = useState({ w: 740, h: 305 })
-  const [tutDnaEdited, setTutDnaEdited] = useState(false)
+
+  const [gameOver,     setGameOver]     = useState(false)
+  const [gameOverReason, setGameOverReason] = useState('')
+  const lowScoreStreakRef    = useRef(0)
+  const hawkExtinctStreakRef = useRef(0)
 
   const [selectedSpecies,     setSelectedSpecies]     = useState(null)
   const [speed,               setSpeed]               = useState(2)
+  const [timewarpLevel,       setTimewarpLevel]       = useState(1)  // 1–10; active when speed >= 2
   const [highlightMutationId, setHighlightMutationId] = useState(null)
 
   // DNA overrides: { [speciesId]: { [statKey]: [c1, c2, c3] } }
@@ -99,6 +128,51 @@ export default function App() {
   const simTickRef = useRef(0)
   simTickRef.current = sim.tick
 
+  // Slow to Watch speed when a geologic/environmental event fires; restore on dismiss
+  const preEventSpeedRef = useRef(null)
+  useEffect(() => {
+    if (sim.eventBanner) {
+      if (preEventSpeedRef.current === null) {
+        preEventSpeedRef.current = speed
+      }
+      if (speed > 1) setSpeed(1)
+    }
+  }, [sim.eventBanner])   // intentionally excludes `speed` — only fire on banner change
+
+  // ── Health score + game-over detection ──────────────────────────────
+  const healthScore = useMemo(
+    () => computeHealthScore(sim.pops, sim.arrivedSpecies),
+    [sim.pops, sim.arrivedSpecies]
+  )
+
+  useEffect(() => {
+    if (gameOver || tutOpen) return
+    if (healthScore < 10) {
+      lowScoreStreakRef.current++
+      if (lowScoreStreakRef.current >= 5) {
+        setGameOver(true)
+        setGameOverReason('Every species has collapsed. The island cannot sustain life.')
+        setSpeed(0)
+      }
+    } else {
+      lowScoreStreakRef.current = 0
+    }
+    // Hawk extinction — require 3 consecutive ticks at 0 to avoid false positives
+    // right after initDevWorld (canvas needs one frame to count new agents in posMap)
+    if (sim.arrivedSpecies?.has('hawk')) {
+      if ((sim.pops.hawk ?? 0) < 1) {
+        hawkExtinctStreakRef.current++
+        if (hawkExtinctStreakRef.current >= 3) {
+          setGameOver(true)
+          setGameOverReason('The Island Hawk has gone extinct. Without an apex predator, the food web has unravelled.')
+          setSpeed(0)
+        }
+      } else {
+        hawkExtinctStreakRef.current = 0
+      }
+    }
+  }, [sim.tick])
+
   // ── Window management ────────────────────────────────────────────────
 
   const focusWin  = (id) => setWinOrder(prev => [...prev.filter(w => w !== id), id])
@@ -125,7 +199,6 @@ export default function App() {
 
   function handleDnaChange(speciesId, newDna) {
     setDnaOverrides(prev => ({ ...prev, [speciesId]: newDna }))
-    setTutDnaEdited(true)
   }
 
   // Tutorial helpers
@@ -142,11 +215,20 @@ export default function App() {
   function tutDone() {
     setTutOpen(false)
     localStorage.setItem('tutDone', '1')
+    // If trees never spawned (tutorial skipped before first_organism step), spawn them now
+    if (!sim.arrivedSpecies?.has('tree')) {
+      sim.triggerFirstTree()
+      // Fix the corrupted fertility DNA so skipped-tutorial trees can reproduce
+      setDnaOverrides(prev => ({
+        ...prev,
+        tree: { ...(prev.tree ?? {}), fertility: ['CGT', 'TAA', 'GCC'] }
+      }))
+      setTimeout(() => spawnMoreTreesRef.current?.(7), 120)
+    }
   }
   function tutReopen() {
     setTutStep(0)
     setTutOpen(true)
-    setTutDnaEdited(false)
     localStorage.removeItem('tutDone')
     localStorage.setItem('tutStep', '0')
     focusWin('tutorial')
@@ -198,14 +280,19 @@ export default function App() {
     const step = TUTORIAL_STEPS[tutStep]
     if (!step?.completeWhen) return false
     switch (step.completeWhen) {
-      case 'gene_open':        return wins.gene.open
-      case 'species_selected': return selectedSpecies !== null
-      case 'codon_changed':    return tutDnaEdited
-      case 'clock_open':       return wins.clock.open
-      case 'events_open':      return wins.events.open
-      default:                 return false
+      case 'gene_open':          return wins.gene.open
+      case 'species_selected':   return selectedSpecies !== null
+      case 'tree_fertility_20': {
+        const tree = SPECIES.find(s => s.id === 'tree')
+        if (!tree) return false
+        const resolved = applyDNA(tree.stats, dnaOverrides['tree'])
+        return (resolved.fertility ?? 0) >= 20
+      }
+      case 'clock_open':         return wins.clock.open
+      case 'events_open':        return wins.events.open
+      default:                   return false
     }
-  }, [tutStep, wins, selectedSpecies, tutDnaEdited])
+  }, [tutStep, wins, selectedSpecies, dnaOverrides])
 
   // Time window content helpers
   const season       = getSeason(sim.tick)
@@ -232,6 +319,8 @@ export default function App() {
         arrivedSpecies={sim.arrivedSpecies}
         spawnMoreTreesRef={spawnMoreTreesRef}
         focusViewportRef={focusViewportRef}
+        diversityRef={sim.diversityRef}
+        deathLogRef={sim.deathLogRef}
       />
 
       <Header
@@ -241,13 +330,32 @@ export default function App() {
         wins={wins}
         onToggleWin={toggleWin}
         onOpenTutorial={tutReopen}
+        healthScore={sim.arrivedSpecies?.size > 1 ? healthScore : null}
+        onDevWorld={() => {
+          setGameOver(false)
+          lowScoreStreakRef.current = 0
+          hawkExtinctStreakRef.current = 0
+          sim.initDevWorld()
+          setDnaOverrides(prev => ({
+            ...prev,
+            tree: { ...(prev.tree ?? {}), fertility: ['CGT', 'TAA', 'GCC'] }
+          }))
+        }}
       />
 
       {/* Overseer narrator popup — arrivals and environmental events */}
       {(sim.eventBanner || sim.arrivalBanner) && (
         <OverseerPopup
           message={sim.eventBanner ?? sim.arrivalBanner}
-          onDismiss={sim.eventBanner ? sim.dismissEventBanner : sim.dismissArrivalBanner}
+          onDismiss={sim.eventBanner ? () => {
+            sim.dismissEventBanner()
+            if (preEventSpeedRef.current !== null) {
+              const saved = preEventSpeedRef.current
+              setSpeed(saved)
+              if (saved >= 2) setTimewarpLevel(saved - 1)
+              preEventSpeedRef.current = null
+            }
+          } : sim.dismissArrivalBanner}
         />
       )}
 
@@ -255,39 +363,55 @@ export default function App() {
 
       {wins.clock.open && (
         <FloatingWindow
-          title="⏱ Time"
+          title="Time"
           pos={wins.clock.pos} size={wins.clock.size} zIndex={winZ('clock')}
           onClose={() => closeWin('clock')} onFocus={() => focusWin('clock')}
           onMove={pos => moveWin('clock', pos)} onResize={size => resizeWin('clock', size)}
-          minW={220} minH={140}
+          minW={240} minH={178}
         >
           <div className="time-win">
             <div className="time-win__info">
               <span className="time-win__year">Year {sim.year}</span>
               <span className="time-win__season">
-                {season.emoji} {season.name}
+                {season.name}
                 <span style={{ opacity: 0.6 }}>{tickOfSeason}/3</span>
+                {mating.length > 0 && (
+                  <span className="time-win__mating">💕 {mating.join('')}</span>
+                )}
               </span>
-              {mating.length > 0 && (
-                <span className="time-win__mating">💕 Breeding: {mating.join('')}</span>
-              )}
             </div>
             <div className="time-win__divider" />
             <div className="time-win__controls">
-              <span className="speed-label">{SPEED_LABELS[speed]}</span>
-              <div className="speed-slider-wrap">
-                <input
-                  type="range" min={0} max={4} step={1} value={speed}
-                  className="speed-slider"
-                  onChange={e => setSpeed(Number(e.target.value))}
-                />
-                <div className="speed-ticks">
-                  {SPEED_LABELS.map((_, i) => <span key={i} />)}
-                </div>
+              <div className="time-win__mode-btns">
+                <button
+                  className={`time-win__mode-btn${speed === 0 ? ' time-win__mode-btn--active' : ''}`}
+                  onClick={() => setSpeed(0)}
+                  title="Pause simulation"
+                >⏸ Pause</button>
+                <button
+                  className={`time-win__mode-btn${speed === 1 ? ' time-win__mode-btn--active' : ''}`}
+                  onClick={() => setSpeed(1)}
+                  title="Slow observation mode"
+                >👁 Watch</button>
+                {speed === 0 && (
+                  <button className="speed-btn--step" onClick={sim.stepTick} title="Step one tick">▶|</button>
+                )}
               </div>
-              {speed === 0 && (
-                <button className="speed-btn--step" onClick={sim.stepTick} title="Step one tick">▶|</button>
-              )}
+              <div className="time-win__warp">
+                <span className="time-win__warp-label">TIMEWARP</span>
+                <input
+                  type="range" min={1} max={10} step={1} value={timewarpLevel}
+                  className={`speed-slider time-win__warp-slider${speed >= 2 ? ' speed-slider--active' : ''}`}
+                  onChange={e => {
+                    const v = Number(e.target.value)
+                    setTimewarpLevel(v)
+                    setSpeed(v + 1)
+                  }}
+                />
+                <span className={`time-win__warp-val${speed >= 2 ? ' time-win__warp-val--active' : ''}`}>
+                  {timewarpLevel}×
+                </span>
+              </div>
             </div>
           </div>
         </FloatingWindow>
@@ -295,7 +419,7 @@ export default function App() {
 
       {wins.events.open && (
         <FloatingWindow
-          title="📋 Events"
+          title="Events"
           pos={wins.events.pos} size={wins.events.size} zIndex={winZ('events')}
           onClose={() => closeWin('events')} onFocus={() => focusWin('events')}
           onMove={pos => moveWin('events', pos)} onResize={size => resizeWin('events', size)}
@@ -307,17 +431,19 @@ export default function App() {
             livePops={popsRef.current}
             event={sim.event}
             log={sim.log}
+            pressure={sim.pressure ?? 0}
+            deathLog={sim.deathLog}
           />
         </FloatingWindow>
       )}
 
       {wins.ecosystem.open && (
         <FloatingWindow
-          title="🌍 Ecosystem"
+          title="Ecosystem"
           pos={wins.ecosystem.pos} size={wins.ecosystem.size} zIndex={winZ('ecosystem')}
           onClose={() => closeWin('ecosystem')} onFocus={() => focusWin('ecosystem')}
           onMove={pos => moveWin('ecosystem', pos)} onResize={size => resizeWin('ecosystem', size)}
-          minW={300} minH={200}
+          minW={320} minH={300}
         >
           <EcosystemPanel
             event={sim.event}
@@ -326,12 +452,36 @@ export default function App() {
             pops={sim.pops}
             arrivedSpecies={sim.arrivedSpecies}
           />
+          <PopulationPanel
+            pops={sim.pops}
+            popHistory={sim.popHistory}
+            arrivedSpecies={sim.arrivedSpecies}
+          />
+        </FloatingWindow>
+      )}
+
+      {wins.intervention.open && (
+        <FloatingWindow
+          title="Interventions"
+          pos={wins.intervention.pos} size={wins.intervention.size} zIndex={winZ('intervention')}
+          onClose={() => closeWin('intervention')} onFocus={() => focusWin('intervention')}
+          onMove={pos => moveWin('intervention', pos)} onResize={size => resizeWin('intervention', size)}
+          minW={320} minH={280}
+        >
+          <InterventionPanel
+            pops={sim.pops}
+            arrivedSpecies={sim.arrivedSpecies}
+            deadMatter={sim.deadMatter}
+            introduceCost={sim.INTRODUCE_COST}
+            onIntroduce={sim.introduceSpecies}
+            onCull={sim.cullSpecies}
+          />
         </FloatingWindow>
       )}
 
       {wins.species.open && (
         <FloatingWindow
-          title="🐾 Species"
+          title="Species"
           pos={wins.species.pos} size={wins.species.size} zIndex={winZ('species')}
           onClose={() => closeWin('species')} onFocus={() => focusWin('species')}
           onMove={pos => moveWin('species', pos)} onResize={size => resizeWin('species', size)}
@@ -350,7 +500,7 @@ export default function App() {
 
       {wins.gene.open && (
         <FloatingWindow
-          title={`🧬 Gene Lab${selectedSpecies ? ' · ' + selectedSpecies.name : ''}`}
+          title={`Gene Lab${selectedSpecies ? ' · ' + selectedSpecies.name : ''}`}
           pos={wins.gene.pos} size={wins.gene.size} zIndex={winZ('gene')}
           onClose={closeGeneEditor} onFocus={() => focusWin('gene')}
           onMove={pos => moveWin('gene', pos)} onResize={size => resizeWin('gene', size)}
@@ -385,6 +535,7 @@ export default function App() {
                 pops={sim.pops}
                 highlightMutationId={highlightMutationId}
                 onHighlight={setHighlightMutationId}
+                diversity={sim.diversity}
               />
             </div>
           </div>
@@ -412,6 +563,15 @@ export default function App() {
             animated
           />
         </>
+      )}
+
+      {gameOver && (
+        <GameOverOverlay
+          reason={gameOverReason}
+          score={healthScore}
+          year={sim.year}
+          onReturn={() => navigate('/islands')}
+        />
       )}
 
     </div>

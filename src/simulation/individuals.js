@@ -20,6 +20,7 @@ export const BREEDING_TICKS = {
   deer:   [0, 1, 2],    // early spring — rut before summer growth
   frog:   [1, 2, 3],    // mid-spring — amphibians need warm rain
   hawk:   [0, 1],       // very early spring — raptors nest first
+  firefly: null,       // asexual, no season — spawn-then-die every tick
 }
 
 export const SEASONS = [

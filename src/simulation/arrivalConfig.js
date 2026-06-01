@@ -36,8 +36,8 @@ export const ARRIVAL_SCHEDULE = [
     concept: 'Decomposer',
     overseerText:   'Shelf Fungi have arrived. They are decomposers — they break down dead organic matter and return nutrients to the soil.\n\nDecomposers are often overlooked. That is a mistake. Without them, the nutrient cycle collapses and nothing grows.',
     overseerSprite: 'neutral',
-    readyWhen:  (enginePops, livePops) => (enginePops.grass ?? 0) >= 200,
-    progressOf: (enginePops, livePops) => ({ current: Math.round(enginePops.grass ?? 0), needed: 200, unit: 'grass' }),
+    readyWhen:  (enginePops, livePops) => (enginePops.grass ?? 0) >= 800,
+    progressOf: (enginePops, livePops) => ({ current: Math.round(enginePops.grass ?? 0), needed: 800, unit: 'grass' }),
   },
   {
     spId:    'beetle',
@@ -48,8 +48,20 @@ export const ARRIVAL_SCHEDULE = [
     concept: 'Primary Consumer',
     overseerText:   'Rock Beetles have colonised the island. Your first primary consumers — heterotrophs that eat plants instead of making their own energy.\n\nWatch the grass. Beetles eat a great deal of it.',
     overseerSprite: 'friendly',
-    readyWhen:  (enginePops, livePops) => (enginePops.fungi ?? 0) >= 70,
-    progressOf: (enginePops, livePops) => ({ current: Math.round(enginePops.fungi ?? 0), needed: 70, unit: 'fungi' }),
+    readyWhen:  (enginePops, livePops) => (enginePops.fungi ?? 0) >= 90,
+    progressOf: (enginePops, livePops) => ({ current: Math.round(enginePops.fungi ?? 0), needed: 90, unit: 'fungi' }),
+  },
+  {
+    spId:    'firefly',
+    count:   18,
+    label:   'Pond Firefly',
+    trigger: 'insects colonising the island',
+    message: 'Fireflies have appeared around the island\'s ponds, drawn by warm water and pond vegetation.',
+    concept: 'Habitat Specialist',
+    overseerText:   'Pond Fireflies have arrived. They live only around the ponds — a habitat specialist. Stray too far from water and they die.\n\nFrogs will eat them. Watch both populations.',
+    overseerSprite: 'friendly',
+    readyWhen:  (enginePops, livePops) => (livePops.beetle ?? 0) >= 60,
+    progressOf: (enginePops, livePops) => ({ current: Math.round(livePops.beetle ?? 0), needed: 60, unit: 'beetles' }),
   },
   {
     spId:    'deer',
@@ -94,7 +106,7 @@ export const ARRIVAL_SCHEDULE = [
     trigger: 'boar roaming the island',
     message: 'Monitor lizards have drifted to the wetlands on floating debris from a storm.',
     concept: 'Tertiary Consumer',
-    overseerText:   'Monitor Lizards have drifted in on storm debris. Tertiary predators. They will regulate herbivore numbers and maintain balance in the food web.\n\nDo not let them go extinct. They are load-bearing.',
+    overseerText:   'Monitor Lizards have drifted in on storm debris. Tertiary predators. They hunt frogs, beetles, and wild boar — the only check on the boar population.\n\nDo not let them go extinct. They are load-bearing.',
     overseerSprite: 'neutral',
     readyWhen:  (enginePops, livePops) => (livePops.boar ?? 0) >= 10,
     progressOf: (enginePops, livePops) => ({ current: Math.round(livePops.boar ?? 0), needed: 10, unit: 'boar' }),
@@ -119,8 +131,9 @@ export const ARRIVAL_HOME = {
   tree:    { x: 220 * ISLAND_SCALE, y: 210 * ISLAND_SCALE, spread: 55 * ISLAND_SCALE },
   beetle:  { x: 650 * ISLAND_SCALE, y: 420 * ISLAND_SCALE, spread: 80 * ISLAND_SCALE },
   deer:    { x: 630 * ISLAND_SCALE, y: 390 * ISLAND_SCALE, spread: 90 * ISLAND_SCALE },
-  frog:    { x: 700 * ISLAND_SCALE, y: 200 * ISLAND_SCALE, spread: 60 * ISLAND_SCALE },
+  firefly: { x: 360 * ISLAND_SCALE, y: 310 * ISLAND_SCALE, spread: 50 * ISLAND_SCALE },  // pond area, main island
+  frog:    { x: 360 * ISLAND_SCALE, y: 320 * ISLAND_SCALE, spread: 70 * ISLAND_SCALE },  // pond area, main island
   boar:    { x: 660 * ISLAND_SCALE, y: 430 * ISLAND_SCALE, spread: 80 * ISLAND_SCALE },
-  monitor: { x: 710 * ISLAND_SCALE, y: 180 * ISLAND_SCALE, spread: 60 * ISLAND_SCALE },
+  monitor: { x: 550 * ISLAND_SCALE, y: 180 * ISLAND_SCALE, spread: 70 * ISLAND_SCALE },  // highland coast, main island
   hawk:    { x: 370 * ISLAND_SCALE, y: 120 * ISLAND_SCALE, spread: 70 * ISLAND_SCALE },
 }

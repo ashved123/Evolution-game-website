@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { SPECIES, overallFitness } from '../data/species.js'
 import { STAT_META, applyDNA } from '../data/codons.js'
 import { averageStats } from '../simulation/individuals.js'
+import { SPRITE_ICONS } from '../utils/spriteIcons.js'
 import './SpeciesList.css'
 
 function fitColor(f) {
@@ -95,7 +96,7 @@ export default function SpeciesList({ pops, dnaOverrides, onSelectSpecies, selec
                 className={`species-row ${selectedSpecies?.id === sp.id ? 'species-row--selected' : ''}`}
                 onClick={() => toggle(sp)}
               >
-                <span className="species-row__emoji" style={{ opacity: extinct ? 0.35 : 1 }}>{sp.emoji}</span>
+                <img src={SPRITE_ICONS[sp.id]} className="species-row__emoji" style={{ imageRendering: 'pixelated', opacity: extinct ? 0.35 : 1 }} alt={sp.id} />
                 <div className="species-row__info">
                   <span className="species-row__name">{sp.name}{extinct ? ' — EXTINCT' : ''}</span>
                   <span className="species-row__trophic">{sp.trophic}</span>
