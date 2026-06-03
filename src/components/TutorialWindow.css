@@ -82,6 +82,15 @@
 /* Narrator scales to fill the full stage height.
    height:121% + bottom:-21% keeps the table clipped below
    and puts ~4px headroom above the character's head at any window size. */
+@keyframes narrator-bob {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+.tut-win__stage--talking {
+  animation: narrator-bob 0.5s ease-in-out infinite;
+}
+
 .tut-win__narrator {
   position: absolute;
   height: 100%;
@@ -91,6 +100,7 @@
   transform: translateX(-50%);
   image-rendering: pixelated;
   display: block;
+  transition: opacity 0.05s ease;
 }
 
 /* ── Dialogue box ── */

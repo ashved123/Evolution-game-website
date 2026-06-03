@@ -1192,7 +1192,7 @@ function stepMovement(posMap, biomeAt, resolvedBases, biomeScoresRef, speedMulti
 
 // ── drawing ──────────────────────────────────────────────────────────
 
-function drawSpritesFromMap(sprCtx, posMap, highlightMutId) {
+function drawSpritesFromMap(sprCtx, posMap, highlightMutId, highlightSpId) {
   sprCtx.imageSmoothingEnabled = true
 
   const trees = []
@@ -1215,6 +1215,24 @@ function drawSpritesFromMap(sprCtx, posMap, highlightMutId) {
       sprCtx.shadowBlur  = 10
       sprCtx.strokeStyle = '#ffee58'
       sprCtx.lineWidth   = 2.5
+      sprCtx.beginPath()
+      sprCtx.arc(cx, cy, r, 0, Math.PI * 2)
+      sprCtx.stroke()
+      sprCtx.restore()
+    }
+
+    // Highlight ring for species focus
+    if (highlightSpId && pos.spId === highlightSpId) {
+      const cx = pos.x
+      const cy = pos.y - h / 2
+      const r  = Math.max(w, h) / 2 + 6
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 400)
+      sprCtx.save()
+      sprCtx.shadowColor = '#5a9068'
+      sprCtx.shadowBlur  = 6 + pulse * 8
+      sprCtx.strokeStyle = '#5a9068'
+      sprCtx.lineWidth   = 2
+      sprCtx.globalAlpha = 0.5 + pulse * 0.4
       sprCtx.beginPath()
       sprCtx.arc(cx, cy, r, 0, Math.PI * 2)
       sprCtx.stroke()
@@ -1248,6 +1266,24 @@ function drawSpritesFromMap(sprCtx, posMap, highlightMutId) {
       sprCtx.restore()
     }
 
+    // Highlight ring for species focus (trees)
+    if (highlightSpId && pos.spId === highlightSpId) {
+      const cx = pos.x
+      const cy = pos.y - h / 2
+      const r  = Math.max(w, h) / 2 + 6
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 400)
+      sprCtx.save()
+      sprCtx.shadowColor = '#5a9068'
+      sprCtx.shadowBlur  = 6 + pulse * 8
+      sprCtx.strokeStyle = '#5a9068'
+      sprCtx.lineWidth   = 2
+      sprCtx.globalAlpha = 0.5 + pulse * 0.4
+      sprCtx.beginPath()
+      sprCtx.arc(cx, cy, r, 0, Math.PI * 2)
+      sprCtx.stroke()
+      sprCtx.restore()
+    }
+
     sprCtx.drawImage(img, pos.x - w / 2, pos.y - h, w, h)
   }
 }
@@ -1258,7 +1294,8 @@ export default function IslandCanvas({
   speed, onSelectSpecies, preset = 'standard', pops = {}, individuals = {},
   dnaOverrides = {}, biomeScoresRef = null, posMapRef = null, popsRef = null, biomeAtRef = null,
   simTickRef = null, highlightMutationId = null, arrivedSpecies = null, spawnMoreTreesRef = null,
-  focusViewportRef = null, diversityRef = null, deathLogRef = null,
+  focusViewportRef = null, diversityRef = null, deathLogRef = null, highlightSpecies = null,
+  externalVpRef = null,
 }) {
   const canvasRef       = useRef(null)
   const spriteCanvasRef = useRef(null)
@@ -1277,6 +1314,8 @@ export default function IslandCanvas({
   dnaOverridesRef.current = dnaOverrides
   const highlightMutRef  = useRef(highlightMutationId)
   highlightMutRef.current = highlightMutationId
+  const highlightSpeciesRef  = useRef(highlightSpecies)
+  highlightSpeciesRef.current = highlightSpecies
   const speedRef         = useRef(speed)
   speedRef.current       = speed
 
@@ -1447,6 +1486,7 @@ export default function IslandCanvas({
   // ── Viewport: update pan/zoom state ──────────────────────────────
   const applyViewport = useCallback((vp) => {
     vpRef.current = vp
+    if (externalVpRef) externalVpRef.current = { panX: vp.panX, panY: vp.panY, scale: vp.scale }
     if (hotspotRef.current) {
       hotspotRef.current.style.transform =
         `translate(${vp.panX}px,${vp.panY}px) scale(${vp.scale})`
@@ -1516,7 +1556,7 @@ export default function IslandCanvas({
           sprCtx.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height)
           sprCtx.save()
           sprCtx.setTransform(vp.scale * dpr, 0, 0, vp.scale * dpr, vp.panX * dpr, vp.panY * dpr)
-          drawSpritesFromMap(sprCtx, posMap, highlightMutRef.current)
+          drawSpritesFromMap(sprCtx, posMap, highlightMutRef.current, highlightSpeciesRef.current)
           sprCtx.restore()
         }
       }

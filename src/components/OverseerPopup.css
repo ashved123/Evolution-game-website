@@ -43,6 +43,15 @@
     repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(160,40,40,0.12) 3px, rgba(160,40,40,0.12) 4px);
 }
 
+@keyframes overseer-bob {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+.overseer-popup__stage--talking {
+  animation: overseer-bob 0.5s ease-in-out infinite;
+}
+
 .overseer-popup__narrator {
   position: absolute;
   bottom: calc(-8% - 6px);

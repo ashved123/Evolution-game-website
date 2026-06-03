@@ -5,14 +5,13 @@ import narratorThreat   from '../assets/sprites/narrator/pose_threat.png'
 import './OverseerPopup.css'
 
 const NARRATOR_IMGS = { friendly: narratorFriendly, neutral: narratorNeutral, threat: narratorThreat }
-const CHAR_DELAY  = 24
-const MOUTH_DELAY = 160
+const CHARS_PER_SEC = 500
+const MOUTH_DELAY   = 160
 
 export default function OverseerPopup({ message, onDismiss }) {
-  const text   = message?.overseerText  ?? ''
-  const sprite = message?.overseerSprite ?? 'neutral'
+  const text    = message?.overseerText  ?? ''
+  const sprite  = message?.overseerSprite ?? 'neutral'
   const concept = message?.concept ?? null
-  const emoji   = message?.emoji ?? null
   const title   = message?.label ? `${message.label} has arrived` : (message?.title ?? null)
 
   const [charCount, setCharCount] = useState(0)
@@ -21,26 +20,41 @@ export default function OverseerPopup({ message, onDismiss }) {
 
   const typingRef = useRef(null)
   const mouthRef  = useRef(null)
+  const textRef   = useRef(text)
+  textRef.current = text
 
   const isDone = charCount >= text.length
 
   useEffect(() => {
+    cancelAnimationFrame(typingRef.current)
+    clearInterval(mouthRef.current)
     setCharCount(0)
     setIsTyping(true)
     setMouthOpen(false)
-  }, [message])
 
-  useEffect(() => {
-    if (!isTyping) return
-    typingRef.current = setInterval(() => {
-      setCharCount(prev => {
-        const next = prev + 1
-        if (next >= text.length) { setIsTyping(false); clearInterval(typingRef.current) }
-        return next
-      })
-    }, CHAR_DELAY)
-    return () => clearInterval(typingRef.current)
-  }, [isTyping, text])
+    let startTime = null
+    let lastChar  = 0
+
+    function frame(now) {
+      if (startTime === null) startTime = now
+      const target = Math.min(
+        Math.floor((now - startTime) * CHARS_PER_SEC / 1000),
+        textRef.current.length
+      )
+      if (target > lastChar) {
+        lastChar = target
+        setCharCount(target)
+        if (target >= textRef.current.length) {
+          setIsTyping(false)
+          return
+        }
+      }
+      typingRef.current = requestAnimationFrame(frame)
+    }
+
+    typingRef.current = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(typingRef.current)
+  }, [message])
 
   useEffect(() => {
     if (!isTyping) { setMouthOpen(false); return }
@@ -49,7 +63,7 @@ export default function OverseerPopup({ message, onDismiss }) {
   }, [isTyping])
 
   function skip() {
-    clearInterval(typingRef.current)
+    cancelAnimationFrame(typingRef.current)
     clearInterval(mouthRef.current)
     setCharCount(text.length)
     setIsTyping(false)
@@ -64,7 +78,7 @@ export default function OverseerPopup({ message, onDismiss }) {
 
   return (
     <div className="overseer-popup">
-      <div className={`overseer-popup__stage overseer-popup__stage--${sprite}`}>
+      <div className={`overseer-popup__stage overseer-popup__stage--${sprite}${isTyping ? ' overseer-popup__stage--talking' : ''}`}>
         {Object.entries(NARRATOR_IMGS).map(([key, src]) => (
           <img key={key} className="overseer-popup__narrator" src={src} alt=""
             style={{ opacity: narratorKey === key ? 1 : 0 }} />

@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext.jsx'
 import { ISLAND_PRESETS } from '../data/presets.js'
 import { buildIslandBitmap } from '../utils/islandRenderer.js'
 import './IslandsPage.css'
 
-const THUMB_SIZE = 80
+const STORAGE_KEY = 'islands'
+const THUMB_SIZE  = 80
+
+function loadIslands() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch { return [] }
+}
+function saveIslands(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+}
 
 function IslandThumb({ preset }) {
   const canvasRef = useRef(null)
@@ -21,27 +28,14 @@ function IslandThumb({ preset }) {
 }
 
 export default function IslandsPage() {
-  const [islands, setIslands] = useState([])
-  const [loading, setLoading] = useState(true)
-  const { user, logout }      = useAuth()
+  const [islands, setIslands] = useState(() => loadIslands())
   const navigate = useNavigate()
 
-  useEffect(() => {
-    fetch('/api/islands')
-      .then(r => r.json())
-      .then(data => { setIslands(data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
-  async function deleteIsland(id) {
+  function deleteIsland(id) {
     if (!confirm('Delete this island? This cannot be undone.')) return
-    await fetch(`/api/islands/${id}`, { method: 'DELETE' })
-    setIslands(prev => prev.filter(i => i.id !== id))
-  }
-
-  async function handleLogout() {
-    await logout()
-    navigate('/auth')
+    const next = islands.filter(i => i.id !== id)
+    setIslands(next)
+    saveIslands(next)
   }
 
   return (
@@ -50,9 +44,11 @@ export default function IslandsPage() {
       <div className="islands-header pixel-box">
         <span className="islands-title">Island of Life</span>
         <div className="islands-header-right">
-          <span className="islands-user">{user?.username}</span>
-          <button className="pixel-btn pixel-btn--outline logout-btn" onClick={handleLogout}>
-            Log Out
+          <button
+            className="pixel-btn pixel-btn--outline"
+            onClick={() => navigate('/showcase')}
+          >
+            Showcase
           </button>
         </div>
       </div>
@@ -61,15 +57,11 @@ export default function IslandsPage() {
 
         <div className="islands-section-label">Your Islands</div>
 
-        {loading && <div className="islands-empty">Loading...</div>}
-
-        {!loading && islands.length === 0 && (
-          <div className="islands-empty">
-            No islands yet. Create your first one!
-          </div>
+        {islands.length === 0 && (
+          <div className="islands-empty">No islands yet. Create your first one!</div>
         )}
 
-        {!loading && islands.length > 0 && (
+        {islands.length > 0 && (
           <div className="islands-grid">
             {islands.map(island => (
               <div key={island.id} className="island-card pixel-box">

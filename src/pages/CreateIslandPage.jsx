@@ -2,30 +2,33 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './CreateIslandPage.css'
 
+const STORAGE_KEY = 'islands'
+
+function loadIslands() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch { return [] }
+}
+
+function createId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+}
+
 export default function CreateIslandPage() {
   const [name,  setName]  = useState('')
   const [error, setError] = useState('')
-  const [busy,  setBusy]  = useState(false)
   const navigate = useNavigate()
 
-  async function handleCreate(e) {
+  function handleCreate(e) {
     e.preventDefault()
     if (!name.trim()) return setError('Please name your island.')
-    setError('')
-    setBusy(true)
-    try {
-      const r    = await fetch('/api/islands', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), preset: 'standard' }),
-      })
-      const data = await r.json()
-      if (!r.ok) throw new Error(data.error)
-      navigate(`/game/${data.id}`, { state: { island: data, isNew: true } })
-    } catch (err) {
-      setError(err.message)
-      setBusy(false)
+    const island = {
+      id:         createId(),
+      name:       name.trim(),
+      preset:     'standard',
+      created_at: new Date().toISOString(),
     }
+    const islands = [...loadIslands(), island]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(islands))
+    navigate(`/game/${island.id}`, { state: { island, isNew: true } })
   }
 
   return (
@@ -52,8 +55,8 @@ export default function CreateIslandPage() {
 
           {error && <div className="auth-error" style={{ marginTop: 12 }}>{error}</div>}
 
-          <button className="pixel-btn create-submit" type="submit" disabled={busy}>
-            {busy ? '...' : 'Create Island'}
+          <button className="pixel-btn create-submit" type="submit">
+            Create Island
           </button>
         </form>
 

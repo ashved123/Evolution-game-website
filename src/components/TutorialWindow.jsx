@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import FloatingWindow from './FloatingWindow.jsx'
 import { TUTORIAL_STEPS } from '../data/tutorialSteps.js'
 import narratorFriendly from '../assets/sprites/narrator/pose_friendly.png'
@@ -12,11 +12,9 @@ const NARRATOR_IMGS = {
   threat:   narratorThreat,
 }
 
-const CHAR_DELAY  = 28
-const MOUTH_DELAY = 160
+const CHARS_PER_SEC = 500
+const MOUTH_DELAY   = 160
 
-// Parse [[spriteName]] markers out of body text.
-// Returns { clean: string, changes: [{ atChar, sprite }] }
 function parseBody(body) {
   const changes = []
   let clean = ''
@@ -46,50 +44,61 @@ export default function TutorialWindow({
   const isFirst = step === 0
   const isLast  = step === total - 1
 
-  const { clean: fullText, changes: spriteChanges } = parseBody(current?.body ?? '')
+  const { clean: fullText, changes: spriteChanges } = useMemo(
+    () => parseBody(current?.body ?? ''),
+    [step] // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
-  const [charCount,     setCharCount]     = useState(0)
-  const [isTyping,      setIsTyping]      = useState(true)
-  const [mouthOpen,     setMouthOpen]     = useState(false)
-  const [reacted,       setReacted]       = useState(false)
+  const [charCount,      setCharCount]      = useState(0)
+  const [isTyping,       setIsTyping]       = useState(true)
+  const [mouthOpen,      setMouthOpen]      = useState(false)
+  const [reacted,        setReacted]        = useState(false)
   const [spriteOverride, setSpriteOverride] = useState(null)
 
-  const typingRef = useRef(null)
-  const mouthRef  = useRef(null)
+  const typingRef      = useRef(null)
+  const mouthRef       = useRef(null)
+  const fullTextRef    = useRef(fullText)
+  const spriteChgRef   = useRef(spriteChanges)
+  fullTextRef.current  = fullText
+  spriteChgRef.current = spriteChanges
 
   const isDone = charCount >= fullText.length
 
-  // Reset everything on step change
   useEffect(() => {
-    clearInterval(typingRef.current)
+    cancelAnimationFrame(typingRef.current)
     clearInterval(mouthRef.current)
     setCharCount(0)
     setIsTyping(true)
     setMouthOpen(false)
     setReacted(false)
     setSpriteOverride(null)
-  }, [step])
 
-  useEffect(() => {
-    if (!isTyping) return
-    typingRef.current = setInterval(() => {
-      setCharCount(prev => {
-        const next = prev + 1
-        // Check for sprite marker triggers
-        for (const ch of spriteChanges) {
-          if (prev < ch.atChar && next >= ch.atChar) {
-            setSpriteOverride(ch.sprite)
-          }
+    let startTime = null
+    let lastChar  = 0
+
+    function frame(now) {
+      if (startTime === null) startTime = now
+      const target = Math.min(
+        Math.floor((now - startTime) * CHARS_PER_SEC / 1000),
+        fullTextRef.current.length
+      )
+      if (target > lastChar) {
+        for (const ch of spriteChgRef.current) {
+          if (ch.atChar > lastChar && ch.atChar <= target) setSpriteOverride(ch.sprite)
         }
-        if (next >= fullText.length) {
+        lastChar = target
+        setCharCount(target)
+        if (target >= fullTextRef.current.length) {
           setIsTyping(false)
-          clearInterval(typingRef.current)
+          return
         }
-        return next
-      })
-    }, CHAR_DELAY)
-    return () => clearInterval(typingRef.current)
-  }, [isTyping, fullText, spriteChanges])
+      }
+      typingRef.current = requestAnimationFrame(frame)
+    }
+
+    typingRef.current = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(typingRef.current)
+  }, [step])
 
   useEffect(() => {
     if (!isTyping) { setMouthOpen(false); return }
@@ -97,7 +106,6 @@ export default function TutorialWindow({
     return () => clearInterval(mouthRef.current)
   }, [isTyping])
 
-  // When player completes an interactive step: show reaction then auto-advance
   useEffect(() => {
     if (!stepComplete || !isDone || !current?.completeWhen) return
     setReacted(true)
@@ -106,15 +114,13 @@ export default function TutorialWindow({
   }, [stepComplete, isDone, current?.completeWhen, onNext])
 
   function skipTyping() {
-    clearInterval(typingRef.current)
+    cancelAnimationFrame(typingRef.current)
     clearInterval(mouthRef.current)
     setCharCount(fullText.length)
     setIsTyping(false)
     setMouthOpen(false)
-    // Apply any sprite markers that would have triggered during skipped text
     if (spriteChanges.length > 0) {
-      const last = spriteChanges[spriteChanges.length - 1]
-      setSpriteOverride(last.sprite)
+      setSpriteOverride(spriteChanges[spriteChanges.length - 1].sprite)
     }
   }
 
@@ -130,9 +136,9 @@ export default function TutorialWindow({
   const talkingSprite  = mouthOpen ? 'neutral' : 'friendly'
 
   let narratorKey
-  if (reacted)                                     narratorKey = reactionSprite
-  else if (isTyping && stepSprite !== 'threat')    narratorKey = talkingSprite
-  else                                             narratorKey = stepSprite
+  if (reacted)                                  narratorKey = reactionSprite
+  else if (isTyping && stepSprite !== 'threat') narratorKey = talkingSprite
+  else                                          narratorKey = stepSprite
   const narratorSrc = NARRATOR_IMGS[narratorKey]
 
   const displayed = reacted
@@ -142,6 +148,8 @@ export default function TutorialWindow({
 
   const isInteractive = !!current.completeWhen
   const waiting       = isInteractive && isDone && !stepComplete && !reacted
+
+  const stageSprite = reacted ? reactionSprite : (spriteOverride ?? current.sprite ?? 'neutral')
 
   return (
     <FloatingWindow
@@ -154,7 +162,6 @@ export default function TutorialWindow({
     >
       <div className="tut-win">
 
-        {/* Progress pips */}
         <div className="tut-win__meta">
           <span className="tut-win__counter">Step {step + 1} / {total}</span>
           <div className="tut-win__bar">
@@ -166,10 +173,9 @@ export default function TutorialWindow({
 
         <div className="tut-win__divider" />
 
-        {/* Narrator + flowing text */}
         <div className="tut-win__content-row">
 
-          <div className={`tut-win__stage tut-win__stage--${reacted ? reactionSprite : (spriteOverride ?? current.sprite ?? 'neutral')}`}>
+          <div className={`tut-win__stage tut-win__stage--${stageSprite}${isTyping && !reacted ? ' tut-win__stage--talking' : ''}`}>
             {Object.entries(NARRATOR_IMGS).map(([key, src]) => (
               <img
                 key={key}
@@ -205,7 +211,6 @@ export default function TutorialWindow({
 
         </div>
 
-        {/* Navigation */}
         <div className="tut-win__nav">
           <div className="tut-win__nav-left">
             {!isFirst && !reacted && (

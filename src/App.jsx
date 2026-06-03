@@ -114,6 +114,7 @@ export default function App() {
   const biomeAtRef         = useRef(null)
   const spawnMoreTreesRef  = useRef(null)
   const focusViewportRef   = useRef(null)
+  const loadFileRef        = useRef(null)
 
   const dnaBySpecies = useMemo(() =>
     Object.fromEntries(SPECIES.map(s => [

@@ -1,0 +1,452 @@
+/* ── ShowcasePage layout ─────────────────────────────────────────── */
+
+.sc {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+/* topbar — matches game header */
+.sc__topbar {
+  flex-shrink: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--color-panel-dark);
+  border-bottom: 2px solid var(--color-border);
+  box-shadow: 0 2px 10px rgba(80,50,20,0.2);
+  gap: 12px;
+}
+
+.sc__toplabel {
+  font-size: 7px;
+  color: var(--color-accent);
+  letter-spacing: 1px;
+  flex: 1;
+}
+
+.sc__topcontrols {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sc__spd {
+  font-size: 7px;
+  padding: 4px 9px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.sc__spd--on {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.sc__spd:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.sc__yr {
+  font-size: 6px;
+  color: var(--color-text-dim);
+  padding: 3px 7px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+/* body split */
+.sc__body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sc__sim {
+  flex: 0 0 42%;
+  position: relative;
+  overflow: hidden;
+  border-right: 2px solid var(--color-border);
+}
+
+.sc__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20,14,8,0.88);
+  font-size: 9px;
+  color: var(--color-accent);
+  z-index: 40;
+}
+
+/* panel */
+.sc__panel {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--color-panel-bg);
+  min-width: 0;
+}
+
+.sc__panel::-webkit-scrollbar       { width: 5px; }
+.sc__panel::-webkit-scrollbar-track { background: var(--color-bg); }
+.sc__panel::-webkit-scrollbar-thumb { background: var(--color-border); }
+
+/* sticky tabs */
+.sc__tabs {
+  position: sticky;
+  top: 0;
+  display: flex;
+  background: var(--color-panel-dark);
+  border-bottom: 2px solid var(--color-border);
+  z-index: 5;
+  overflow-x: auto;
+}
+
+.sc__tab {
+  font-size: 7px;
+  background: transparent;
+  color: var(--color-text-dim);
+  border: none;
+  border-right: 1px solid var(--color-border);
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sc__tab:hover {
+  background: rgba(184,148,112,0.12);
+  color: var(--color-text);
+}
+
+.sc__tab--active {
+  background: var(--color-panel-bg);
+  color: var(--color-accent);
+}
+
+/* sections */
+.sc__section {
+  padding: 14px 16px 4px;
+}
+
+.sc__section-title {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding-bottom: 7px;
+  margin-bottom: 10px;
+  border-bottom: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text);
+}
+
+.sc__section-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.sc__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+/* cards */
+.sc-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid;
+  padding: 9px 11px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: border-color 0.12s;
+}
+
+.sc-card:hover {
+  border-color: var(--color-accent);
+}
+
+.sc-card--expanded {
+  grid-column: 1 / -1;
+  cursor: default;
+  border-width: 2px;
+  border-left-width: 4px;
+}
+
+.sc-card--expanded:hover {
+  border-color: inherit;
+}
+
+.sc-card__header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+
+.sc-card__cat {
+  font-size: 6px;
+  padding: 2px 5px;
+  color: #fff;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.sc-card__title {
+  font-size: 8px;
+  color: var(--color-text);
+  flex: 1;
+  line-height: 1.5;
+}
+
+.sc-card__close {
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  font-size: 8px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.sc-card__close:hover {
+  color: var(--color-accent);
+}
+
+.sc-card__teaser {
+  font-size: 6px;
+  color: var(--color-text-dim);
+  font-style: italic;
+  line-height: 1.7;
+}
+
+.sc-card__body {
+  font-size: 6px;
+  color: var(--color-text);
+  line-height: 2.1;
+  white-space: pre-line;
+  margin-top: 10px;
+}
+
+/* trial buttons */
+.sc-card__trials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.sc-trial-btn {
+  font-size: 7px !important;
+  padding: 5px 10px !important;
+}
+
+.sc-trial-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: var(--shadow) !important;
+}
+
+/* code section */
+.sc-card__code {
+  margin-top: 12px;
+  background: var(--color-panel-dark);
+  border-left: 3px solid var(--color-accent2);
+  padding: 10px 12px;
+}
+
+.sc-card__code-label {
+  font-size: 6px;
+  color: var(--color-accent2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 7px;
+}
+
+.sc-card__code-body {
+  font-size: 6px;
+  color: var(--color-text);
+  line-height: 2.1;
+}
+
+/* formula widgets */
+.sc-widget {
+  margin-top: 12px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-border);
+  padding: 10px 12px;
+}
+
+.sc-widget__title {
+  font-size: 6px;
+  color: var(--color-accent2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.sc-widget__row {
+  font-size: 6px;
+  color: var(--color-text);
+  line-height: 2.2;
+}
+
+.sc-widget__row--dim {
+  opacity: 0.45;
+}
+
+.sc-widget__val {
+  color: var(--color-accent2);
+  font-weight: bold;
+}
+
+.sc-widget__dim {
+  color: var(--color-text-dim);
+}
+
+.sc-widget__note {
+  margin-top: 5px;
+  font-size: 5px;
+  color: var(--color-text-dim);
+  line-height: 1.8;
+}
+
+/* ── Scene mode ──────────────────────────────────────────────────── */
+
+.sc__scene {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.sc__scene-sim {
+  position: absolute;
+  inset: 0;
+}
+
+.sc__back-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 300;
+  font-size: 6px !important;
+  padding: 5px 10px !important;
+}
+
+.sc__scene-speed {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(226,216,200,0.9);
+  border: 1px solid var(--color-border);
+  padding: 4px 8px;
+  box-shadow: var(--shadow);
+}
+
+/* act title inside overseer window */
+.tut-win__act-title {
+  font-size: 7px;
+  color: var(--color-accent);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+/* blinking cursor during typewriter */
+.tut-win__cursor {
+  animation: blink 0.7s step-end infinite;
+  color: var(--color-accent);
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* deep dive button in grid card */
+.sc-card__deepdive {
+  margin-top: 12px;
+}
+
+.sc-deepdive-btn {
+  font-size: 7px !important;
+  padding: 6px 14px !important;
+  background: var(--color-accent2) !important;
+  color: var(--color-bg) !important;
+  border: none !important;
+}
+
+.sc-deepdive-btn:hover {
+  background: #4a7a58 !important;
+}
+
+/* sparklines */
+.sc-sparks {
+  margin-top: 12px;
+  background: var(--color-panel-dark);
+  border: 1px solid var(--color-border);
+  padding: 10px 12px;
+}
+
+.sc-sparks__title {
+  font-size: 6px;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.sc-sparks__canvas {
+  display: block;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.sc-sparks__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.sc-sparks__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 5px;
+  color: var(--color-text-dim);
+}
+
+.sc-sparks__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+
+.sc-card__cite {
+  margin-bottom: 8px;
+  line-height: 1.8;
+}
+
+.sc-card__cite-url {
+  color: var(--color-accent);
+  font-style: italic;
+}

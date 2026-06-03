@@ -709,5 +709,19 @@ export function useSimulation(speed, dnaBySpecies, biomeScoresRef, posMapRef, po
     })
   }, [])
 
-  return { ...state, pops: combinedPops, individuals, stepTick: doTick, arrivalBanner, nextArrival, arrivedSpecies, variationHistory, mutationRegistry, mutationFreqHistory, injectMutation, eventBanner, dismissEventBanner, dismissArrivalBanner, triggerFirstTree, initDevWorld, popHistory, introduceSpecies, cullSpecies, INTRODUCE_COST, diversity, diversityRef, deathLog, deathLogRef, triggerEvent }
+  const loadSnapshot = useCallback((snap) => {
+    initDevWorld()
+    setTimeout(() => {
+      setState(prev => ({
+        ...prev,
+        pops:       { ...prev.pops, ...(snap.pops ?? {}) },
+        deadMatter: snap.deadMatter ?? prev.deadMatter,
+        nutrients:  snap.nutrients  ?? prev.nutrients,
+        tick:       (snap.year ?? prev.year) * TICKS_PER_YEAR,
+        year:       snap.year ?? prev.year,
+      }))
+    }, 300)
+  }, [initDevWorld])
+
+  return { ...state, pops: combinedPops, individuals, stepTick: doTick, arrivalBanner, nextArrival, arrivedSpecies, variationHistory, mutationRegistry, mutationFreqHistory, injectMutation, eventBanner, dismissEventBanner, dismissArrivalBanner, triggerFirstTree, initDevWorld, loadSnapshot, popHistory, introduceSpecies, cullSpecies, INTRODUCE_COST, diversity, diversityRef, deathLog, deathLogRef, triggerEvent }
 }

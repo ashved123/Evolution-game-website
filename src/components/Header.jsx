@@ -10,7 +10,7 @@ const TABS = [
   { id: 'gene',         label: 'Gene Lab'      },
 ]
 
-export default function Header({ year, islandName, onBackToDashboard, wins = {}, onToggleWin, onOpenTutorial, onDevWorld, healthScore }) {
+export default function Header({ year, islandName, onBackToDashboard, wins = {}, onToggleWin, onOpenTutorial, onDevWorld, onSave, onLoad, healthScore }) {
   const scoreGrade = healthScore == null ? null
     : healthScore >= 70 ? 'good'
     : healthScore >= 40 ? 'warn'
@@ -32,6 +32,12 @@ export default function Header({ year, islandName, onBackToDashboard, wins = {},
             </span>
           )}
           <button className="header__tut-btn" onClick={onOpenTutorial} title="Open tutorial">?</button>
+          {onSave && (
+            <button className="header__dev-btn" onClick={onSave} title="Save game to file">💾</button>
+          )}
+          {onLoad && (
+            <button className="header__dev-btn" onClick={onLoad} title="Load game from file">📂</button>
+          )}
           {onDevWorld && (
             <button className="header__dev-btn" onClick={onDevWorld} title="Dev: populate full ecosystem">DEV</button>
           )}
